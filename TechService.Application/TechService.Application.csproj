@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+	  <PackageReference Include="Aplicada1.Core" Version="1.1.0" />
+	  <PackageReference Include="Mapster" Version="7.4.0" />
+	  <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.15" />
+	  <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.15" />
+	  <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
+    <ProjectReference Include="..\TechService.Infrastructure\TechService.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
