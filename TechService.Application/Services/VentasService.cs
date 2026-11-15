@@ -39,7 +39,7 @@ public class VentasService(
         {
             ClienteId = venta.ClienteId,
             MetodoPagoId = venta.MetodoPagoId,
-            FechaVenta = venta.Fecha,
+            FechaVenta = venta.Fecha == default ? DateTime.UtcNow : venta.Fecha,
             Subtotal = venta.Subtotal,
             Itbis = venta.Itbis,
             TotalVenta = venta.Total,
@@ -51,7 +51,9 @@ public class VentasService(
             }).ToList()
         };
         contexto.Ventas.Add(entidad);
-        return await contexto.SaveChangesAsync() > 0;
+        var guardo = await contexto.SaveChangesAsync() > 0;
+        venta.VentaId = entidad.VentaId;
+        return guardo;
     }
 
     public async Task<bool> Modificar(VentaDto venta)

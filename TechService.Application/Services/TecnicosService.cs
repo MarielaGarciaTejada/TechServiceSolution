@@ -37,14 +37,15 @@ public class TecnicosService(
         await using var contexto = await contextFactory.CreateDbContextAsync();
         var entidad = new Tecnico
         {
-            TecnicoId = tecnico.TecnicoId,
             Nombre = tecnico.Nombre,
             Especialidad = string.IsNullOrWhiteSpace(tecnico.Especialidad) ? "General" : tecnico.Especialidad,
             PorcentajeComision = 10.0m,
             Activo = true
         };
         contexto.Tecnicos.Add(entidad);
-        return await contexto.SaveChangesAsync() > 0;
+        var guardo = await contexto.SaveChangesAsync() > 0;
+        tecnico.TecnicoId = entidad.TecnicoId;
+        return guardo;
     }
 
     public async Task<bool> Modificar(TecnicoDto tecnico)
@@ -58,7 +59,6 @@ public class TecnicosService(
         entidad.Especialidad = tecnico.Especialidad;
         contexto.Tecnicos.Update(entidad);
 
-        contexto.Update(tecnico);
         return await contexto.SaveChangesAsync() > 0;
     }
 

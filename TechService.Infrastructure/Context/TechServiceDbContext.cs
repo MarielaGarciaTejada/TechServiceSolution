@@ -19,7 +19,7 @@ public partial class TechServiceDbContext : DbContext
 
     public virtual DbSet<DetalleVenta> DetalleVentas { get; set; }
 
-    public virtual DbSet<EntregasGarantium> EntregasGarantia { get; set; }
+    public virtual DbSet<EntregasGarantia> EntregasGarantia { get; set; }
 
     public virtual DbSet<Estado> Estados { get; set; }
 
@@ -104,7 +104,7 @@ public partial class TechServiceDbContext : DbContext
                 .HasConstraintName("FK__DetalleVe__Venta__6AEFE058");
         });
 
-        modelBuilder.Entity<EntregasGarantium>(entity =>
+        modelBuilder.Entity<EntregasGarantia>(entity =>
         {
             entity.HasKey(e => e.EntregaId).HasName("PK__Entregas__D9AD23034D63FBD9");
 

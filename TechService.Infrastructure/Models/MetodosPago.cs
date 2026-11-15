@@ -12,7 +12,7 @@ public partial class MetodosPago
 
     [JsonIgnore]
 
-    public virtual ICollection<EntregasGarantium> EntregasGarantia { get; set; } = new List<EntregasGarantium>();
+    public virtual ICollection<EntregasGarantia> EntregasGarantia { get; set; } = new List<EntregasGarantia>();
 
     [JsonIgnore]
 

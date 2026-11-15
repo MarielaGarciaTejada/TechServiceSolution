@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace TechService.Infrastructure.Models;
 
-public partial class EntregasGarantium
+public partial class EntregasGarantia
 {
     public int EntregaId { get; set; }
 

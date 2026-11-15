@@ -54,7 +54,7 @@ public partial class OrdenesReparacion
 
     public virtual Cliente? Cliente { get; set; }
 
-    public virtual ICollection<EntregasGarantium> EntregasGarantia { get; set; } = new List<EntregasGarantium>();
+    public virtual ICollection<EntregasGarantia> EntregasGarantia { get; set; } = new List<EntregasGarantia>();
 
     public virtual Estado? Estado { get; set; }
 

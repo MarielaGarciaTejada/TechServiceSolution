@@ -28,7 +28,7 @@ public class EntregasGarantiaService(
     public async Task<bool> Existe(int entregaId)
     {
         await using var contexto = await contextFactory.CreateDbContextAsync();
-        return await contexto.Set<EntregasGarantium>()
+        return await contexto.Set<EntregasGarantia>()
             .AnyAsync(e => e.EntregaId == entregaId);
     }
 
@@ -46,7 +46,7 @@ public class EntregasGarantiaService(
             .FirstOrDefaultAsync();
         if (metodoPagoId == 0) return false;
 
-        var entidad = new EntregasGarantium
+        var entidad = new EntregasGarantia
         {
             OrdenId = entrega.OrdenId,
             MetodoPagoId = metodoPagoId,
@@ -58,7 +58,7 @@ public class EntregasGarantiaService(
             ObservacionFinal = entrega.CondicionesGarantia ?? string.Empty
         };
 
-        contexto.Set<EntregasGarantium>().Add(entidad);
+        contexto.Set<EntregasGarantia>().Add(entidad);
         var guardo = await contexto.SaveChangesAsync() > 0;
         entrega.EntregaId = entidad.EntregaId;
         return guardo;
@@ -67,7 +67,7 @@ public class EntregasGarantiaService(
     public async Task<bool> Modificar(EntregaGarantiaDto entrega)
     {
         await using var contexto = await contextFactory.CreateDbContextAsync();
-        var entidad = await contexto.Set<EntregasGarantium>()
+        var entidad = await contexto.Set<EntregasGarantia>()
             .FirstOrDefaultAsync(e => e.EntregaId == entrega.EntregaId);
         if (entidad == null) return false;
 
@@ -81,7 +81,7 @@ public class EntregasGarantiaService(
     public async Task<Result<EntregaGarantiaDto?>> Buscar(int entregaId)
     {
         await using var contexto = await contextFactory.CreateDbContextAsync();
-        var dto = await contexto.Set<EntregasGarantium>()
+        var dto = await contexto.Set<EntregasGarantia>()
             .AsNoTracking()
             .Where(e => e.EntregaId == entregaId)
             .Select(e => new EntregaGarantiaDto
@@ -102,7 +102,7 @@ public class EntregasGarantiaService(
     public async Task<Result<List<EntregaGarantiaDto>>> GetList(Expression<Func<EntregaGarantiaDto, bool>> criterio)
     {
         await using var contexto = await contextFactory.CreateDbContextAsync();
-        return await contexto.Set<EntregasGarantium>()
+        return await contexto.Set<EntregasGarantia>()
             .AsNoTracking()
             .Select(e => new EntregaGarantiaDto
             {
@@ -119,7 +119,7 @@ public class EntregasGarantiaService(
     public async Task<Result> Eliminar(int entregaId)
     {
         await using var contexto = await contextFactory.CreateDbContextAsync();
-        var eliminado = await contexto.Set<EntregasGarantium>()
+        var eliminado = await contexto.Set<EntregasGarantia>()
             .Where(e => e.EntregaId == entregaId)
             .ExecuteDeleteAsync() > 0;
         return Result.Success(eliminado);
