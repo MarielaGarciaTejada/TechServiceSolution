@@ -61,8 +61,8 @@ try
     builder.Services.AddScoped<OrdenesReparacionService>();
     builder.Services.AddScoped<OrdenRepuestosService>();
     builder.Services.AddScoped<HistorialOrdenEventosService>();
-    //builder.Services.AddScoped<EntregasGarantiaService>();
-    //builder.Services.AddScoped<VentasService>();
+    builder.Services.AddScoped<EntregasGarantiaService>();
+    builder.Services.AddScoped<VentasService>();
     builder.Services.AddScoped<UsuariosService>();
 
     // Servicio de Notificaciones hacia TechService.Hub
