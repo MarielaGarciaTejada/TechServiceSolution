@@ -39,10 +39,10 @@ public class VentasService(
         {
             ClienteId = venta.ClienteId,
             MetodoPagoId = venta.MetodoPagoId,
-            FechaVenta = venta.Fecha == default ? DateTime.UtcNow : venta.Fecha,
+            FechaVenta = venta.FechaVenta ?? DateTime.UtcNow,
             Subtotal = venta.Subtotal,
             Itbis = venta.Itbis,
-            TotalVenta = venta.Total,
+            TotalVenta = venta.TotalVenta,
             DetalleVenta = venta.Detalles.Select(d => new DetalleVenta
             {
                 ItemId = d.ItemId,
@@ -61,12 +61,14 @@ public class VentasService(
         await using var contexto = await contextFactory.CreateDbContextAsync();
         var entidad = await contexto.Ventas.FirstOrDefaultAsync(v => v.VentaId == venta.VentaId);
         if (entidad == null) return false;
+
         entidad.ClienteId = venta.ClienteId;
         entidad.MetodoPagoId = venta.MetodoPagoId;
-        entidad.FechaVenta = venta.Fecha;
+        entidad.FechaVenta = venta.FechaVenta ?? entidad.FechaVenta;
         entidad.Subtotal = venta.Subtotal;
         entidad.Itbis = venta.Itbis;
-        entidad.TotalVenta = venta.Total;
+        entidad.TotalVenta = venta.TotalVenta;
+
         return await contexto.SaveChangesAsync() > 0;
     }
 
@@ -81,12 +83,12 @@ public class VentasService(
                 VentaId = v.VentaId,
                 ClienteId = v.ClienteId,
                 ClienteNombre = v.Cliente != null ? v.Cliente.Nombre : null,
-                Fecha = v.FechaVenta ?? default,
+                FechaVenta = v.FechaVenta,
                 MetodoPagoId = v.MetodoPagoId,
                 MetodoPagoNombre = v.MetodoPago != null ? v.MetodoPago.Nombre : string.Empty,
                 Subtotal = v.Subtotal,
                 Itbis = v.Itbis,
-                Total = v.TotalVenta,
+                TotalVenta = v.TotalVenta,
                 Detalles = v.DetalleVenta.Select(d => new DetalleVentaDto
                 {
                     DetalleVentaId = d.DetalleVentaId,
@@ -113,12 +115,20 @@ public class VentasService(
                 VentaId = v.VentaId,
                 ClienteId = v.ClienteId,
                 ClienteNombre = v.Cliente != null ? v.Cliente.Nombre : null,
-                Fecha = v.FechaVenta ?? default,
+                FechaVenta = v.FechaVenta,
                 MetodoPagoId = v.MetodoPagoId,
                 MetodoPagoNombre = v.MetodoPago != null ? v.MetodoPago.Nombre : string.Empty,
                 Subtotal = v.Subtotal,
                 Itbis = v.Itbis,
-                Total = v.TotalVenta
+                TotalVenta = v.TotalVenta,
+                Detalles = v.DetalleVenta.Select(d => new DetalleVentaDto
+                {
+                    DetalleVentaId = d.DetalleVentaId,
+                    VentaId = d.VentaId,
+                    ItemId = d.ItemId,
+                    Cantidad = d.Cantidad,
+                    PrecioUnitario = d.PrecioUnitario
+                }).ToList()
             })
             .Where(criterio)
             .ToListAsync();
@@ -148,3 +158,4 @@ public class VentasService(
         return result.Value ?? [];
     }
 }
+

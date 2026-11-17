@@ -5,17 +5,14 @@ namespace TechService.Application.Dtos;
 
 public class VentaDto
 {
-	public int VentaId { get; set; }
-	public string NumeroFactura { get; set; } = string.Empty;
-	public int? ClienteId { get; set; }
-	public string? ClienteNombre { get; set; }
-	public int UsuarioId { get; set; }
-	public string UsuarioNombre { get; set; } = string.Empty;
-	public DateTime Fecha { get; set; }
-	public int MetodoPagoId { get; set; }
-	public string MetodoPagoNombre { get; set; } = string.Empty;
-	public decimal Subtotal { get; set; }
-	public decimal Itbis { get; set; }
-	public decimal Total { get; set; }
-	public List<DetalleVentaDto> Detalles { get; set; } = new();
+    public int VentaId { get; set; }
+    public int? ClienteId { get; set; }
+    public string? ClienteNombre { get; set; }
+    public int MetodoPagoId { get; set; }
+    public string MetodoPagoNombre { get; set; } = string.Empty;
+    public DateTime? FechaVenta { get; set; }
+    public decimal Subtotal { get; set; }
+    public decimal Itbis { get; set; }
+    public decimal TotalVenta { get; set; }
+    public List<DetalleVentaDto> Detalles { get; set; } = new();
 }
