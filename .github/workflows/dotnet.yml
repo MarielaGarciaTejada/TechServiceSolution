@@ -1,0 +1,42 @@
+name: Build solution
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore TechServiceSolution.slnx
+
+      - name: Build solution
+        run: dotnet build TechServiceSolution.slnx --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test TechServiceSolution.slnx --configuration Release --no-build --verbosity minimal --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: .NET test results
+          path: 'TestResults/**/*.trx'
+          reporter: dotnet-trx
