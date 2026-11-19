@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="TechService.Application.UnitTests/TechService.Application.UnitTests.csproj" Id="e94fd52e-8e37-4340-a911-7c5e68cb4e14" />
+  </Folder>
+  <Project Path="TechService.Api/TechService.Api.csproj" />
+  <Project Path="TechService.Application/TechService.Application.csproj" Id="2556f511-da37-4c44-ae47-dc5db3c881e6" />
+  <Project Path="TechService.Hub/TechService.Hub.csproj" />
+  <Project Path="TechService.Infrastructure/TechService.Infrastructure.csproj" Id="d9136029-c8c7-4986-8dca-75a93c75817a" />
+</Solution>

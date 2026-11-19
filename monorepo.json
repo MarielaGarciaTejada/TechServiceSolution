@@ -1,0 +1,10 @@
+[
+  {
+    "projectKey": "myorg_mymonorepo_api",
+    "projectName": "TechServiceSolution"
+  },
+  {
+    "projectKey": "myorg_mymonorepo_web",
+    "projectName": "Web app"
+  }
+]
