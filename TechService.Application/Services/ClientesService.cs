@@ -39,13 +39,15 @@ public class ClientesService(
         {
             ClienteId = cliente.ClienteId,
             Nombre = cliente.Nombre,
-            DocumentoIdentidad = "N/A", // Valores por defecto para que SQL no de un error
+            DocumentoIdentidad = $"DOC-{Guid.NewGuid():N}"[..18], // Valores por defecto para que SQL no de un error
             Telefono = "N/A",
             Email = "cliente@correo.com",
             FechaRegistro = DateTime.UtcNow
         };
         contexto.Clientes.Add(entidad);
-        return await contexto.SaveChangesAsync() > 0;
+        var guardo = await contexto.SaveChangesAsync() > 0;
+        cliente.ClienteId = entidad.ClienteId;
+        return guardo;
     }
 
     public async Task<bool> Modificar(ClienteDto cliente)
