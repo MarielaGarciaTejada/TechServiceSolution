@@ -1,5 +1,4 @@
 name: Build solution
-
 # Este workflow se ejecuta cuando alguien hace push o crea un pull request
 # hacia la rama principal. La idea es verificar automáticamente que el proyecto
 # sigue compilando y que las pruebas siguen pasando.
@@ -19,12 +18,12 @@ on:
 jobs:
   build:
     name: Build and test
-    # Usamos un runner Linux de GitHub Actions, que es suficiente para compilar
-    # y probar una solución .NET.
     runs-on: ubuntu-latest
     permissions:
       contents: read
       checks: write
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     steps:
       # 1) Descarga el código fuente del repositorio
@@ -43,7 +42,7 @@ jobs:
 
       # 4) Instala la herramienta de SonarScanner si existe SONAR_TOKEN
       - name: Install SonarScanner
-        if: ${{ secrets.SONAR_TOKEN != '' }}
+        if: ${{ env.SONAR_TOKEN != '' }}
         shell: bash
         run: |
           dotnet tool install --global dotnet-sonarscanner
@@ -51,14 +50,12 @@ jobs:
 
       # 5) Si no hay token de SonarCloud configurado, se omite sin fallar
       - name: SonarCloud analysis skipped
-        if: ${{ secrets.SONAR_TOKEN == '' }}
+        if: ${{ env.SONAR_TOKEN == '' }}
         run: echo "Skipping SonarCloud analysis because SONAR_TOKEN is not configured."
 
       # 6) Inicia la analítica de SonarCloud si el token existe
       - name: Begin SonarCloud analysis
-        if: ${{ secrets.SONAR_TOKEN != '' }}
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        if: ${{ env.SONAR_TOKEN != '' }}
         run: |
           export PATH="$PATH:$HOME/.dotnet/tools"
           dotnet sonarscanner begin \
@@ -77,9 +74,7 @@ jobs:
 
       # 9) Cierra la analítica de SonarCloud si el token existe
       - name: End SonarCloud analysis
-        if: ${{ secrets.SONAR_TOKEN != '' }}
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        if: ${{ env.SONAR_TOKEN != '' }}
         run: |
           export PATH="$PATH:$HOME/.dotnet/tools"
           dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
