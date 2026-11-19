@@ -46,7 +46,9 @@ public class CatalogoService(
             StockMinimoAlerta = itemDto.StockMinimoAlerta
         };
         contexto.CatalogoItems.Add(entidad);
-        return await contexto.SaveChangesAsync() > 0;
+        var guardo = await contexto.SaveChangesAsync() > 0;
+        itemDto.ItemId = entidad.ItemId;
+        return guardo;
     }
 
     public async Task<bool> Modificar(CatalogoItemDto itemDto)
