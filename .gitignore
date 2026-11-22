@@ -530,7 +530,6 @@ Desktop.ini
 # ==========================================
 # Proyectos Excluidos de la Solución (Local)
 # ==========================================
-TechService.BlazorClient/
 TechService.WinForms/
 
 
