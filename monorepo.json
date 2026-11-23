@@ -1,10 +1,14 @@
 [
   {
-    "projectKey": "myorg_mymonorepo_api",
-    "projectName": "TechServiceSolution"
+    "projectKey": "techservicesolution_api",
+    "projectName": "TechServiceSolution API"
   },
   {
-    "projectKey": "myorg_mymonorepo_web",
-    "projectName": "Web app"
+    "projectKey": "techservicesolution_desktop",
+    "projectName": "TechServiceSolution Desktop"
+  },
+  {
+    "projectKey": "techservicesolution_web",
+    "projectName": "TechServiceSolution Web"
   }
 ]

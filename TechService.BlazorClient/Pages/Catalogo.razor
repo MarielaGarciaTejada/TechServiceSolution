@@ -1,0 +1,227 @@
+@page "/catalogo"
+@inject HttpClient Http
+
+<PageTitle>Catálogo de Tarifas y Repuestos | TechService</PageTitle>
+
+<div class="container my-4">
+    <!-- Encabezado -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-primary">
+                <i class="bi bi-tags-fill me-2"></i>Catálogo de Tarifas y Repuestos
+            </h2>
+            <p class="text-muted">Consulta la lista de servicios técnicos, piezas de recambio y accesorios disponibles en nuestro taller.</p>
+        </div>
+        <div class="col-md-4 text-md-end d-flex align-items-center justify-content-md-end">
+            <button class="btn btn-outline-primary" @onclick="CargarCatalogo" disabled="@cargando">
+                <i class="bi bi-arrow-clockwise me-1"></i>Actualizar Precios
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros y Búsqueda -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-3">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0" 
+                               placeholder="Buscar por nombre, código SKU o categoría..." 
+                               @bind="textoBusqueda" 
+                               @bind:event="oninput" />
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex gap-2">
+                    <select class="form-select" @bind="filtroTipo">
+                        <option value="">Todos los Tipos</option>
+                        <option value="TarifaServicio">Servicios</option>
+                        <option value="RepuestoInterno">Repuestos</option>
+                        <option value="AccesorioPOS">Accesorios</option>
+                    </select>
+
+                    <select class="form-select" @bind="filtroCategoria">
+                        <option value="">Todas las Categorías</option>
+                        <option value="Celular">Celulares</option>
+                        <option value="Laptop">Laptops</option>
+                        <option value="Consola">Consolas</option>
+                        <option value="Tablet">Tablets</option>
+                        <option value="Universal">Universal</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensajes de estado -->
+    @if (cargando)
+    {
+        <div class="text-center my-5 py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+            <p class="mt-3 text-muted">Cargando catálogo de artículos...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(mensajeError))
+    {
+        <div class="alert alert-danger shadow-sm border-0 text-center py-3">
+            <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+            @mensajeError
+            <div class="mt-2">
+                <button class="btn btn-sm btn-outline-danger" @onclick="CargarCatalogo">Reintentar</button>
+            </div>
+        </div>
+    }
+    else if (itemsFiltrados.Count == 0)
+    {
+        <div class="card shadow-sm border-0 text-center py-5">
+            <div class="card-body">
+                <i class="bi bi-inbox fs-1 text-muted mb-2 d-block"></i>
+                <h5 class="text-secondary">No se encontraron artículos</h5>
+                <p class="text-muted">Intenta cambiar los filtros o el texto de búsqueda.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Resumen de items -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <small class="text-muted">Mostrando <strong>@itemsFiltrados.Count</strong> de @items.Count artículos disponibles</small>
+        </div>
+
+        <!-- Grilla de Cards del Catálogo -->
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            @foreach (var item in itemsFiltrados)
+            {
+                var tipoNombre = ObtenerNombreTipo(item);
+                var equipoNombre = ObtenerNombreEquipo(item);
+
+                <div class="col">
+                    <div class="card h-100 shadow-sm border-0 position-relative">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge @ObtenerBadgeTipo(tipoNombre)">@tipoNombre</span>
+                                <span class="badge bg-light text-dark font-monospace border">@item.CodigoSku</span>
+                            </div>
+
+                            <h5 class="card-title fw-bold text-dark mb-1">@item.Nombre</h5>
+                            <small class="text-muted mb-3"><i class="bi bi-device-ssd me-1"></i>@equipoNombre</small>
+
+                            <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;">Tarifa / Precio</small>
+                                    <span class="fs-4 fw-bold text-primary font-monospace">RD$ @item.Precio.ToString("N2")</span>
+                                </div>
+                                <div class="text-end">
+                                    @if (tipoNombre.Contains("Servicio", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <span class="badge bg-info-subtle text-info-emphasis px-2 py-1">
+                                            <i class="bi bi-clock-history me-1"></i>En Taller
+                                        </span>
+                                    }
+                                    else if (item.Stock <= 0)
+                                    {
+                                        <span class="badge bg-danger">Agotado</span>
+                                    }
+                                    else if (item.Stock <= item.StockMinimoAlerta)
+                                    {
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-exclamation-circle me-1"></i>Pocas unidades (@item.Stock)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success-subtle text-success px-2 py-1">
+                                            <i class="bi bi-check-circle me-1"></i>En Stock (@item.Stock)
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<CatalogoItemDto> items = new();
+    private bool cargando = true;
+    private string mensajeError = string.Empty;
+
+    private string textoBusqueda = string.Empty;
+    private string filtroTipo = string.Empty;
+    private string filtroCategoria = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCatalogo();
+    }
+
+    private async Task CargarCatalogo()
+    {
+        cargando = true;
+        mensajeError = string.Empty;
+
+        try
+        {
+            var resultado = await Http.GetFromJsonAsync<List<CatalogoItemDto>>("api/catalogo");
+            items = resultado ?? new();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"No se pudo cargar el catálogo de tarifas: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private List<CatalogoItemDto> itemsFiltrados => items
+        .Where(i => 
+            (string.IsNullOrWhiteSpace(textoBusqueda) || 
+             i.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) || 
+             i.CodigoSku.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase) ||
+             ObtenerNombreEquipo(i).Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(filtroTipo) || ObtenerNombreTipo(i).Equals(filtroTipo, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(filtroCategoria) || ObtenerNombreEquipo(i).Equals(filtroCategoria, StringComparison.OrdinalIgnoreCase)))
+        .OrderBy(i => i.TipoItemId)
+        .ThenBy(i => i.Nombre)
+        .ToList();
+
+    private string ObtenerNombreTipo(CatalogoItemDto item)
+    {
+        if (!string.IsNullOrEmpty(item.TipoItemNombre)) return item.TipoItemNombre;
+        return item.TipoItemId switch
+        {
+            1 => "AccesorioPOS",
+            2 => "RepuestoInterno",
+            3 => "TarifaServicio",
+            _ => $"Tipo #{item.TipoItemId}"
+        };
+    }
+
+    private string ObtenerNombreEquipo(CatalogoItemDto item)
+    {
+        if (!string.IsNullOrEmpty(item.TipoEquipoNombre)) return item.TipoEquipoNombre;
+        return item.TipoEquipoId switch
+        {
+            1 => "Celular",
+            2 => "Laptop",
+            3 => "Consola",
+            4 => "Tablet",
+            5 => "Universal",
+            _ => $"Equipo #{item.TipoEquipoId}"
+        };
+    }
+
+    private string ObtenerBadgeTipo(string tipo)
+    {
+        var t = tipo.ToLower();
+        if (t.Contains("servicio")) return "bg-primary";
+        if (t.Contains("repuesto")) return "bg-success";
+        if (t.Contains("accesorio")) return "bg-info text-dark";
+        return "bg-secondary";
+    }
+}
