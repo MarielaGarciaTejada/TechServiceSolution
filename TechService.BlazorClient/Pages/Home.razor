@@ -1,0 +1,97 @@
+@page "/"
+@inject NavigationManager Navigation
+
+<PageTitle>
+    Tech Service Solution| Solución Integral de Reparaciones
+</PageTitle>
+
+<div class="container py-5">
+    <div class="row align-items-center mb-5">
+        <div class="col-lg-7 text-center text-lg-start mb-4 mb-lg-0">
+            <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 rounded-pill mb-3">
+                <i class="bi bi-shield-check me-1"></i>Taller Certificado y Especializado
+            </span>
+            <h1 class="display-4 fw-bold text-dark lh-sm mb-3">
+                Reparaciones Rápidas, Transparentes y <span class="text-primary">en Tiempo Real</span>
+            </h1>
+            <p class="lead text-muted mb-4">
+                Consulta el estado de tu smartphone, laptop o consola directamente desde tu navegador. Chatea con el técnico a cargo y autoriza tus repuestos con un solo clic.
+            </p>
+            <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-lg-start">
+                <a href="tracking" class="btn btn-primary btn-lg px-4 shadow-sm fw-semibold">
+                    <i class="bi bi-search me-2"></i>Rastrear mi Orden
+                </a>
+                <a href="catalogo" class="btn btn-outline-secondary btn-lg px-4">
+                    <i class="bi bi-tags me-2"></i>Ver Tarifas y Repuestos
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card shadow border-0 p-4 bg-light">
+                <h5 class="fw-bold mb-3"><i class="bi bi-qr-code-scan me-2 text-primary"></i>Consulta Rápida de Tracking</h5>
+                <p class="text-muted small">Ingresa el código que te entregamos en el comprobante impreso o por SMS.</p>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-secondary">Código de Seguimiento</label>
+                    <input type="text" class="form-control form-control-lg text-uppercase font-monospace" 
+                           placeholder="TS-2026-0001" 
+                           @bind="codigoRapido" 
+                           @onkeyup="ManejarEnter" />
+                </div>
+                <button class="btn btn-dark btn-lg w-100 fw-semibold" @onclick="IrATracking" disabled="@string.IsNullOrWhiteSpace(codigoRapido)">
+                    Consultar Estado Ahora
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <div class="row g-4 pt-4 border-top">
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-3">
+                <div class="card-body">
+                    <div class="text-primary fs-2 mb-2"><i class="bi bi-broadcast"></i></div>
+                    <h5 class="fw-bold">Monitoreo en Vivo</h5>
+                    <p class="text-muted small mb-0">Entérate al instante cuando tu equipo pasa a revisión de placa, cambio de pieza o pruebas finales vía SignalR.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-3">
+                <div class="card-body">
+                    <div class="text-primary fs-2 mb-2"><i class="bi bi-chat-quote"></i></div>
+                    <h5 class="fw-bold">Comunicación Directa</h5>
+                    <p class="text-muted small mb-0">Chatea con el técnico asignado para resolver dudas sobre presupuesto o piezas sin tener que llamar por teléfono.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-3">
+                <div class="card-body">
+                    <div class="text-primary fs-2 mb-2"><i class="bi bi-patch-check"></i></div>
+                    <h5 class="fw-bold">Garantía Asegurada</h5>
+                    <p class="text-muted small mb-0">Transparencia en precios de repuestos originales y 30 días de garantía computada al momento de la entrega.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string codigoRapido = string.Empty;
+
+    private void ManejarEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(codigoRapido))
+        {
+            IrATracking();
+        }
+    }
+
+    private void IrATracking()
+    {
+        if (!string.IsNullOrWhiteSpace(codigoRapido))
+        {
+            Navigation.NavigateTo($"tracking/{codigoRapido.Trim()}");
+        }
+    }
+}

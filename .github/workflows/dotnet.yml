@@ -1,0 +1,89 @@
+name: Build solution
+# Este workflow se ejecuta cuando alguien hace push o crea un pull request
+# hacia la rama principal. La idea es verificar automáticamente que el proyecto
+# sigue compilando y que las pruebas siguen pasando.
+
+on:
+  push:
+    branches:
+      - main
+      - mariela-dev
+      - Luis-dev
+  pull_request:
+    branches:
+      - main
+      - mariela-dev
+      - Luis-dev
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+    steps:
+      # 1) Descarga el código fuente del repositorio
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2) Instala el SDK de .NET 10
+      - name: Setup .NET SDK .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # 3) Restaura todos los paquetes NuGet de la solución
+      - name: Restore dependencies
+        run: dotnet restore TechServiceSolution.slnx
+
+      # 4) Instala la herramienta de SonarScanner si existe SONAR_TOKEN
+      - name: Install SonarScanner
+        if: ${{ env.SONAR_TOKEN != '' }}
+        shell: bash
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      # 5) Si no hay token de SonarCloud configurado, se omite sin fallar
+      - name: SonarCloud analysis skipped
+        if: ${{ env.SONAR_TOKEN == '' }}
+        run: echo "Skipping SonarCloud analysis because SONAR_TOKEN is not configured."
+
+      # 6) Inicia la analítica de SonarCloud si el token existe
+      - name: Begin SonarCloud analysis
+        if: ${{ env.SONAR_TOKEN != '' }}
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet sonarscanner begin \
+            /o:"tesisenel" \
+            /k:"TesisEnel_UASD_TechServiceSolution_2026_03" \
+            /d:sonar.token="${SONAR_TOKEN}" \
+            /d:sonar.host.url="https://sonarcloud.io"
+
+      # 7) Compila la solución en modo Release
+      - name: Build solution
+        run: dotnet build TechServiceSolution.slnx --configuration Release --no-restore
+
+      # 8) Ejecuta la suite de pruebas y genera el archivo TRX
+      - name: Run tests
+        run: dotnet test TechServiceSolution.slnx --configuration Release --no-build --verbosity minimal --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+
+      # 9) Cierra la analítica de SonarCloud si el token existe
+      - name: End SonarCloud analysis
+        if: ${{ env.SONAR_TOKEN != '' }}
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
+
+      # 10) Publica los resultados de pruebas en GitHub como un Check/Status
+      - name: Publish test results
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: .NET test results
+          path: 'TestResults/**/*.trx'
+          reporter: dotnet-trx

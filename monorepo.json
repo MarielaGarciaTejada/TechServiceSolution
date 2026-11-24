@@ -1,0 +1,14 @@
+[
+  {
+    "projectKey": "techservicesolution_api",
+    "projectName": "TechServiceSolution API"
+  },
+  {
+    "projectKey": "techservicesolution_desktop",
+    "projectName": "TechServiceSolution Desktop"
+  },
+  {
+    "projectKey": "techservicesolution_web",
+    "projectName": "TechServiceSolution Web"
+  }
+]

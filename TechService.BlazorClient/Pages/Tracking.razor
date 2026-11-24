@@ -1,0 +1,623 @@
+@page "/tracking"
+@page "/tracking/{CodigoTrackingParam}"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
+@implements IAsyncDisposable
+
+<PageTitle>Seguimiento de Reparación | TechService</PageTitle>
+
+<div class="container my-4">
+    <!-- Encabezado -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2 class="fw-bold text-primary">
+                <i class="bi bi-tools me-2"></i>Seguimiento en Vivo de Reparaciones
+            </h2>
+            <p class="text-muted">Consulta el estado de tu equipo en tiempo real y comunícate con el técnico asignado.</p>
+        </div>
+    </div>
+
+    <!-- Buscador de Orden -->
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-3">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="bi bi-search text-muted"></i>
+                        </span>
+                        <input type="text" class="form-control border-start-0" 
+                               placeholder="Ejemplo: TS-2026-0001" 
+                               @bind="codigoBusqueda" 
+                               @bind:event="oninput"
+                               @onkeyup="ManejarTeclaEnter" />
+                        <button class="btn btn-primary px-4 fw-semibold" @onclick="BuscarOrden" disabled="@cargando">
+                            @if (cargando)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                <span>Buscando...</span>
+                            }
+                            else
+                            {
+                                <span>Consultar</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(mensajeError))
+            {
+                <div class="alert alert-danger mt-3 py-2 text-center border-0 shadow-sm" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@mensajeError
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (orden != null)
+    {
+        <!-- Indicador de conexión SignalR -->
+        <div class="d-flex justify-content-end align-items-center mb-3">
+            <span class="badge @(estaConectado ? "bg-success" : "bg-warning text-dark") px-3 py-2">
+                <i class="bi @(estaConectado ? "bi-broadcast" : "bi-arrow-repeat") me-1"></i>
+                @(estaConectado ? "Conectado en vivo (SignalR)" : "Reconectando...")
+            </span>
+        </div>
+
+        <div class="row g-4">
+            <!-- Columna Izquierda: Información y Progreso -->
+            <div class="col-lg-7">
+                <!-- Tarjeta de Detalles del Equipo -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                        <span class="fw-bold">Orden: @orden.CodigoTracking</span>
+                        <span class="badge @ObtenerBadgeClaseEstado(estadoMostrado) px-3 py-2 fs-6">
+                            @estadoMostrado
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">Tipo de Equipo</small>
+                                <span class="fw-semibold">@(string.IsNullOrEmpty(orden.TipoEquipoNombre) ? $"Tipo #{orden.TipoEquipoId}" : orden.TipoEquipoNombre)</span>
+                            </div>
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">Marca / Modelo</small>
+                                <span class="fw-semibold">@orden.MarcaModelo</span>
+                            </div>
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">Número de Serie / IMEI</small>
+                                <span class="font-monospace">@orden.NumeroSerieImei</span>
+                            </div>
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">Prioridad</small>
+                                <span class="badge bg-secondary">@(string.IsNullOrEmpty(orden.PrioridadNombre) ? "Normal" : orden.PrioridadNombre)</span>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted d-block">Fallo Reportado</small>
+                                <p class="mb-0 bg-light p-2 rounded text-secondary">@orden.FalloReportado</p>
+                            </div>
+                            @if (!string.IsNullOrEmpty(orden.ObservacionTecnico))
+                            {
+                                <div class="col-12">
+                                    <small class="text-muted d-block">Observaciones del Técnico</small>
+                                    <p class="mb-0 alert alert-info py-2 mb-0">@orden.ObservacionTecnico</p>
+                                </div>
+                            }
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">Fecha de Ingreso</small>
+                                <span>@(orden.FechaIngreso?.ToLocalTime().ToString("g") ?? "N/D")</span>
+                            </div>
+                            <div class="col-sm-6">
+                                <small class="text-muted d-block">Entrega Estimada</small>
+                                <span class="text-primary fw-semibold">@orden.FechaEntregaEstimada.ToLocalTime().ToString("g")</span>
+                            </div>
+                        </div>
+
+                        <!-- Stepper / Progreso visual -->
+                        <div class="mt-4 pt-3 border-top">
+                            <h6 class="fw-bold mb-3">Etapas de Reparación</h6>
+                            <div class="row text-center g-2">
+                                <div class="col-3">
+                                    <div class="p-2 rounded @(EsEtapaCompletada(1) ? "bg-primary text-white" : "bg-light text-muted")">
+                                        <i class="bi bi-box-seam d-block fs-4 mb-1"></i>
+                                        <small class="d-block fw-bold">1. Recibido</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="p-2 rounded @(EsEtapaCompletada(2) ? "bg-primary text-white" : "bg-light text-muted")">
+                                        <i class="bi bi-cpu d-block fs-4 mb-1"></i>
+                                        <small class="d-block fw-bold">2. En Taller</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="p-2 rounded @(EsEtapaCompletada(3) ? "bg-primary text-white" : "bg-light text-muted")">
+                                        <i class="bi bi-check2-circle d-block fs-4 mb-1"></i>
+                                        <small class="d-block fw-bold">3. Pruebas</small>
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="p-2 rounded @(EsEtapaCompletada(4) ? "bg-success text-white" : "bg-light text-muted")">
+                                        <i class="bi bi-bag-check d-block fs-4 mb-1"></i>
+                                        <small class="d-block fw-bold">4. Listo</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Repuestos Asignados & Aprobación -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold"><i class="bi bi-hdd-rack me-2 text-primary"></i>Repuestos y Piezas Requeridas</h6>
+                        <span class="badge bg-secondary">Total: RD$ @CalcularTotalRepuestos().ToString("N2")</span>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (repuestos == null || repuestos.Count == 0)
+                        {
+                            <div class="p-3 text-center text-muted">
+                                <em>No se han asignado piezas o repuestos adicionales para esta orden.</em>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Pieza / Item</th>
+                                            <th class="text-center">Cant.</th>
+                                            <th class="text-end">Precio</th>
+                                            <th class="text-center">Estado</th>
+                                            <th class="text-center">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var rep in repuestos)
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">@(rep.NombreItem ?? $"Item #{rep.ItemId}")</td>
+                                                <td class="text-center">@rep.Cantidad</td>
+                                                <td class="text-end font-monospace">RD$ @((rep.PrecioUnitario * rep.Cantidad).ToString("N2"))</td>
+                                                <td class="text-center">
+                                                    @if (rep.EstadoAprobacionId == 2 || rep.EstadoAprobacionNombre.Equals("Aprobado", StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        <span class="badge bg-success">Aprobado</span>
+                                                    }
+                                                    else if (rep.EstadoAprobacionId == 3 || rep.EstadoAprobacionNombre.Equals("Rechazado", StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        <span class="badge bg-danger">Rechazado</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-warning text-dark">Pendiente</span>
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (rep.EstadoAprobacionId == 1 || rep.EstadoAprobacionNombre.Equals("PendienteCliente", StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-success" 
+                                                                @onclick="() => AprobarRepuesto(rep)" 
+                                                                disabled="@procesandoRepuesto">
+                                                            Aprobar
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted"><i class="bi bi-check-lg"></i></span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Resumen Financiero en Pesos Dominicanos (RD$) -->
+                <div class="card shadow-sm border-0 mb-4 bg-light">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-cash-stack me-2 text-success"></i>Presupuesto Estimado (RD$)</h6>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Mano de Obra Técnica:</span>
+                            <span class="font-monospace fw-semibold">RD$ @orden.CostoManoObra.ToString("N2")</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Repuestos Aprobados:</span>
+                            <span class="font-monospace fw-semibold">RD$ @CalcularTotalRepuestos().ToString("N2")</span>
+                        </div>
+                        <hr class="my-2" />
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold fs-6">Total Estimado a Pagar:</span>
+                            <span class="fs-5 fw-bold text-success font-monospace">RD$ @((orden.CostoManoObra + CalcularTotalRepuestos()).ToString("N2"))</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Chat en Tiempo Real -->
+            <div class="col-lg-5">
+                <div class="card shadow-sm border-0 d-flex flex-column" style="height: 600px;">
+                    <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+                        <span class="fw-bold"><i class="bi bi-chat-dots me-2"></i>Chat con el Taller</span>
+                        <small class="badge bg-white text-primary">En vivo</small>
+                    </div>
+
+                    <!-- Mensajes de Chat -->
+                    <div class="card-body overflow-auto flex-grow-1 p-3 bg-light" id="chatContainer">
+                        @if (mensajesChat.Count == 0)
+                        {
+                            <div class="text-center text-muted my-auto py-5">
+                                <i class="bi bi-chat-square-text fs-1 d-block mb-2 text-secondary"></i>
+                                <p class="mb-0">No hay mensajes aún en esta orden.</p>
+                                <small>Escribe una consulta abajo para comunicarte con el técnico.</small>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var msg in mensajesChat)
+                            {
+                                bool esCliente = msg.Origen.Equals("Cliente", StringComparison.OrdinalIgnoreCase);
+                                bool esSistema = msg.Origen.Equals("Sistema", StringComparison.OrdinalIgnoreCase);
+
+                                if (esSistema)
+                                {
+                                    <div class="text-center my-2">
+                                        <span class="badge bg-secondary-subtle text-secondary px-3 py-1 rounded-pill">
+                                            <i class="bi bi-info-circle me-1"></i>@msg.Mensaje
+                                        </span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex mb-3 @(esCliente ? "justify-content-end" : "justify-content-start")">
+                                        <div class="card border-0 shadow-sm @(esCliente ? "bg-primary text-white" : "bg-white text-dark")" 
+                                             style="max-width: 80%; border-radius: 12px;">
+                                            <div class="card-body p-2 px-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <small class="fw-bold @(esCliente ? "text-white-50" : "text-muted") me-2">@msg.Autor</small>
+                                                    <small class="@(esCliente ? "text-white-50" : "text-muted")" style="font-size: 0.75rem;">
+                                                        @msg.FechaHora.ToLocalTime().ToString("HH:mm")
+                                                    </small>
+                                                </div>
+                                                <p class="mb-0" style="white-space: pre-wrap; font-size: 0.95rem;">@msg.Mensaje</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        }
+                    </div>
+
+                    <!-- Input para Enviar Mensaje -->
+                    <div class="card-footer bg-white p-3 border-top">
+                        <div class="input-group">
+                            <input type="text" class="form-control" 
+                                   placeholder="Escribe tu mensaje..." 
+                                   @bind="nuevoMensaje" 
+                                   @bind:event="oninput"
+                                   @onkeyup="ManejarTeclaChat" 
+                                   disabled="@(!estaConectado || enviandoMensaje)" />
+                            <button class="btn btn-primary" @onclick="EnviarMensaje" disabled="@(!estaConectado || string.IsNullOrWhiteSpace(nuevoMensaje) || enviandoMensaje)">
+                                <i class="bi bi-send-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string? CodigoTrackingParam { get; set; }
+
+    private string codigoBusqueda = string.Empty;
+    private bool cargando = false;
+    private string mensajeError = string.Empty;
+
+    private OrdenDto? orden;
+    private string estadoMostrado = "Recibido";
+    private List<OrdenRepuestoDto> repuestos = new();
+    private List<MensajeChatDto> mensajesChat = new();
+
+    private HubConnection? hubConnection;
+    private bool estaConectado => hubConnection?.State == HubConnectionState.Connected;
+
+    private string nuevoMensaje = string.Empty;
+    private bool enviandoMensaje = false;
+    private bool procesandoRepuesto = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(CodigoTrackingParam))
+        {
+            codigoBusqueda = CodigoTrackingParam;
+            await BuscarOrden();
+        }
+    }
+
+    private async Task ManejarTeclaEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await BuscarOrden();
+        }
+    }
+
+    private async Task ManejarTeclaChat(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(nuevoMensaje))
+        {
+            await EnviarMensaje();
+        }
+    }
+
+    private async Task BuscarOrden()
+    {
+        if (string.IsNullOrWhiteSpace(codigoBusqueda))
+        {
+            mensajeError = "Por favor ingresa un código de tracking.";
+            return;
+        }
+
+        cargando = true;
+        mensajeError = string.Empty;
+
+        try
+        {
+            // Consultar a la API por tracking
+            var ordenRespuesta = await Http.GetFromJsonAsync<OrdenDto>($"api/ordenesreparacion/tracking/{codigoBusqueda.Trim()}");
+
+            if (ordenRespuesta == null)
+            {
+                mensajeError = $"No se encontró ninguna orden con el código '{codigoBusqueda}'.";
+                orden = null;
+                return;
+            }
+
+            orden = ordenRespuesta;
+            estadoMostrado = !string.IsNullOrEmpty(orden.EstadoNombre) 
+                ? orden.EstadoNombre 
+                : MapearNombreEstado(orden.EstadoId);
+
+            // Cargar repuestos asociados
+            try
+            {
+                var respRepuestos = await Http.GetFromJsonAsync<List<OrdenRepuestoDto>>($"api/ordenrepuestos/orden/{orden.OrdenId}");
+                repuestos = respRepuestos ?? new();
+            }
+            catch
+            {
+                repuestos = new();
+            }
+
+            // Cargar historial previo de chat / eventos
+            try
+            {
+                var historialEventos = await Http.GetFromJsonAsync<List<HistorialEventoDto>>($"api/historialordeneventos/orden/{orden.OrdenId}");
+                mensajesChat = historialEventos?
+                    .Select(h => new MensajeChatDto(
+                        orden.CodigoTracking, 
+                        h.Autor, 
+                        h.Mensaje, 
+                        h.Origen, 
+                        h.FechaHora ?? DateTime.UtcNow))
+                    .OrderBy(m => m.FechaHora)
+                    .ToList() ?? new();
+            }
+            catch
+            {
+                mensajesChat = new();
+            }
+
+            // Iniciar o conectar a SignalR
+            await ConectarSignalR();
+        }
+        catch (HttpRequestException ex)
+        {
+            mensajeError = $"Error al consultar la orden: {ex.Message}";
+            orden = null;
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Ocurrió un error inesperado: {ex.Message}";
+            orden = null;
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task ConectarSignalR()
+    {
+        if (orden == null) return;
+
+        if (hubConnection != null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+
+        var hubBase = Configuration["HubBaseUrl"] ?? "https://techservicehub-fgg2bjheghfmarhw.westus3-01.azurewebsites.net/";
+        var hubUrl = hubBase.TrimEnd('/') + "/hubs/reparacion";
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(hubUrl)
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Escuchar nuevo mensaje de chat
+        hubConnection.On<MensajeChatDto>("RecibirMensajeOrden", (mensaje) =>
+        {
+            if (mensaje.CodigoTracking.Equals(orden.CodigoTracking, StringComparison.OrdinalIgnoreCase))
+            {
+                mensajesChat.Add(mensaje);
+                InvokeAsync(StateHasChanged);
+            }
+        });
+
+        // Escuchar cambio de estado técnico
+        hubConnection.On<CambioEstadoOrdenDto>("OrdenEstadoActualizado", (cambio) =>
+        {
+            if (cambio.CodigoTracking.Equals(orden.CodigoTracking, StringComparison.OrdinalIgnoreCase))
+            {
+                estadoMostrado = cambio.NuevoEstado;
+                orden.EstadoNombre = cambio.NuevoEstado;
+                mensajesChat.Add(new MensajeChatDto(
+                    orden.CodigoTracking, 
+                    "Sistema", 
+                    $"El estado cambió a: {cambio.NuevoEstado} (por {cambio.ModificadoPor})", 
+                    "Sistema", 
+                    cambio.FechaHora));
+                InvokeAsync(StateHasChanged);
+            }
+        });
+
+        await hubConnection.StartAsync();
+
+        // Unirse a la sala de esta orden
+        await hubConnection.SendAsync("UnirseAOrden", orden.CodigoTracking);
+    }
+
+    private async Task EnviarMensaje()
+    {
+        if (orden == null || string.IsNullOrWhiteSpace(nuevoMensaje) || hubConnection == null)
+            return;
+
+        enviandoMensaje = true;
+        var mensajeTexto = nuevoMensaje.Trim();
+        nuevoMensaje = string.Empty;
+
+        try
+        {
+            var nuevoEvento = new
+            {
+                OrdenId = orden.OrdenId,
+                Origen = "Cliente",
+                Autor = "Cliente",
+                Mensaje = mensajeTexto,
+                FechaHora = DateTime.UtcNow
+            };
+            await Http.PostAsJsonAsync("api/historialordeneventos", nuevoEvento);
+
+            await hubConnection.SendAsync("EnviarMensajeOrden", orden.CodigoTracking, "Cliente", mensajeTexto, "Cliente");
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al enviar mensaje: {ex.Message}";
+        }
+        finally
+        {
+            enviandoMensaje = false;
+        }
+    }
+
+    private async Task AprobarRepuesto(OrdenRepuestoDto rep)
+    {
+        if (orden == null) return;
+        procesandoRepuesto = true;
+
+        try
+        {
+            rep.EstadoAprobacionId = 2; // Aprobado
+            rep.EstadoAprobacionNombre = "Aprobado";
+            var response = await Http.PutAsJsonAsync($"api/ordenrepuestos/{rep.OrdenRepuestoId}", rep);
+
+            if (response.IsSuccessStatusCode)
+            {
+                if (hubConnection != null && estaConectado)
+                {
+                    await hubConnection.SendAsync("EnviarMensajeOrden", 
+                        orden.CodigoTracking, 
+                        "Cliente", 
+                        $"He aprobado el repuesto: {rep.NombreItem ?? $"Item #{rep.ItemId}"}", 
+                        "Cliente");
+                }
+            }
+            else
+            {
+                rep.EstadoAprobacionId = 1;
+                rep.EstadoAprobacionNombre = "PendienteCliente";
+                mensajeError = "No se pudo actualizar el estado del repuesto.";
+            }
+        }
+        catch (Exception ex)
+        {
+            rep.EstadoAprobacionId = 1;
+            rep.EstadoAprobacionNombre = "PendienteCliente";
+            mensajeError = $"Error al aprobar repuesto: {ex.Message}";
+        }
+        finally
+        {
+            procesandoRepuesto = false;
+        }
+    }
+
+    private decimal CalcularTotalRepuestos()
+    {
+        return repuestos.Where(r => r.EstadoAprobacionId == 2 || r.EstadoAprobacionNombre.Equals("Aprobado", StringComparison.OrdinalIgnoreCase))
+            .Sum(r => r.PrecioUnitario * r.Cantidad);
+    }
+
+    private bool EsEtapaCompletada(int etapa)
+    {
+        if (orden == null) return false;
+        var estado = estadoMostrado.ToLower();
+
+        return etapa switch
+        {
+            1 => true,
+            2 => orden.EstadoId >= 2 || estado.Contains("revision") || estado.Contains("pieza") || estado.Contains("taller") || estado.Contains("reparado") || estado.Contains("entregado"),
+            3 => orden.EstadoId >= 5 || estado.Contains("prueba") || estado.Contains("reparado") || estado.Contains("entregado"),
+            4 => orden.EstadoId >= 6 || estado.Contains("reparado") || estado.Contains("entregado") || estado.Contains("listo"),
+            _ => false
+        };
+    }
+
+    private string MapearNombreEstado(int estadoId)
+    {
+        return estadoId switch
+        {
+            1 => "Recibido",
+            2 => "Revisión de Placa",
+            3 => "Esperando Aprobación",
+            4 => "Cambio de Pieza",
+            5 => "Pruebas de Encendido",
+            6 => "Reparado",
+            7 => "Entregado",
+            _ => $"Estado #{estadoId}"
+        };
+    }
+
+    private string ObtenerBadgeClaseEstado(string estado)
+    {
+        var e = estado.ToLower();
+        if (e.Contains("reparado") || e.Contains("entregado") || e.Contains("listo")) return "bg-success";
+        if (e.Contains("pieza") || e.Contains("revision") || e.Contains("revisión") || e.Contains("taller")) return "bg-primary";
+        if (e.Contains("esperando") || e.Contains("pendiente")) return "bg-warning text-dark";
+        return "bg-secondary";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
+        {
+            if (orden != null)
+            {
+                try
+                {
+                    await hubConnection.SendAsync("SalirDeOrden", orden.CodigoTracking);
+                }
+                catch { }
+            }
+            await hubConnection.DisposeAsync();
+        }
+    }
+}
