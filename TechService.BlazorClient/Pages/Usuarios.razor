@@ -1,0 +1,525 @@
+﻿@page "/usuarios"
+@inject HttpClient Http
+
+<PageTitle>Gestión de Usuarios | TechService</PageTitle>
+
+<div class="container my-4">
+
+    <!-- Encabezado -->
+
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-primary mb-1">
+                <i class="bi bi-person-badge-fill me-2"></i>Gestión de Usuarios y Roles
+            </h2>
+            <p class="text-muted mb-0">Administra las cuentas de acceso del personal, roles y vinculación con técnicos.</p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <button class="btn btn-outline-primary" @onclick="CargarDatos" disabled="@cargando">
+                <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    @if (!string.IsNullOrEmpty(mensajeExito))
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm border-0" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@mensajeExito
+            <button type="button" class="btn-close" @onclick="() => mensajeExito = string.Empty"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(mensajeError))
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@mensajeError
+            <button type="button" class="btn-close" @onclick="() => mensajeError = string.Empty"></button>
+        </div>
+    }
+
+    <div class="row g-4">
+
+        <!-- Columna Izquierda: Formulario Crear / Editar -->
+
+        <div class="col-lg-4">
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header text-white py-3" style="background-color: #0b162c;">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="bi @(esEdicion ? "bi-pencil-square" : "bi-person-plus-fill") me-2 text-primary"></i>
+                        @(esEdicion ? $"Editar Usuario #{usuarioForm.UsuarioId}" : "Nuevo Usuario")
+                    </h6>
+                </div>
+
+                <div class="card-body">
+
+                    <EditForm Model="usuarioForm" OnValidSubmit="GuardarUsuario">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nombre de Usuario</label>
+                            <InputText class="form-control"
+                                       placeholder="Ej: jperez"
+                                       @bind-Value="usuarioForm.NombreUsuario"
+                                       disabled="@guardando" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                Contraseña
+                                @if (esEdicion)
+                                {
+                                    <small class="text-muted fw-normal">(opcional al editar)</small>
+                                }
+                            </label>
+
+                            <div class="input-group">
+                                <input type="@(mostrarContrasena ? "text" : "password")"
+                                       class="form-control"
+                                       placeholder="@(esEdicion ? "Dejar vacío para mantener" : "••••••••")"
+                                       @bind="usuarioForm.Contrasena"
+                                       disabled="@guardando" />
+                                <button type="button" class="btn btn-outline-secondary"
+                                        @onclick="() => mostrarContrasena = !mostrarContrasena">
+                                    <i class="bi @(mostrarContrasena ? "bi-eye-slash" : "bi-eye")"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nombre Completo</label>
+                            <InputText class="form-control"
+                                       placeholder="Ej: Juan Pérez"
+                                       @bind-Value="usuarioForm.NombreCompleto"
+                                       disabled="@guardando" />
+                        </div>
+
+                        <div class="row g-2 mb-3">
+
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold">Email</label>
+                                <input type="email" class="form-control"
+                                       placeholder="correo@ejemplo.com"
+                                       @bind="usuarioForm.Email"
+                                       disabled="@guardando" />
+                            </div>
+
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold">Teléfono</label>
+                                <input type="text" class="form-control"
+                                       placeholder="809-000-0000"
+                                       @bind="usuarioForm.Telefono"
+                                       disabled="@guardando" />
+                            </div>
+
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Rol</label>
+                            <select class="form-select" @bind="usuarioForm.RolId" disabled="@guardando">
+                                <option value="0">-- Seleccione un rol --</option>
+                                @foreach (var rol in roles)
+                                {
+                                    <option value="@rol.RolId">@rol.Nombre</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Técnico Asociado <small class="text-muted fw-normal">(opcional)</small></label>
+                            <select class="form-select" @bind="usuarioForm.TecnicoId" disabled="@guardando">
+                                <option value="">-- Ninguno --</option>
+                                @foreach (var tec in tecnicos)
+                                {
+                                    <option value="@tec.TecnicoId">@tec.Nombre (@tec.Especialidad)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="chkActivo"
+                                   @bind="usuarioForm.Activo" disabled="@guardando" />
+                            <label class="form-check-label fw-semibold" for="chkActivo">Usuario Activo</label>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary fw-semibold" disabled="@guardando">
+                                @if (guardando)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Guardando...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-save me-1"></i>
+                                    <span>@(esEdicion ? "Actualizar Usuario" : "Registrar Usuario")</span>
+                                }
+                            </button>
+
+                            @if (esEdicion)
+                            {
+                                <button type="button" class="btn btn-outline-secondary" @onclick="CancelarEdicion" disabled="@guardando">
+                                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                                </button>
+                            }
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Filtros y Tabla de Usuarios -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <div class="row g-2 align-items-center">
+
+                        <div class="col-sm-4">
+                            <h6 class="mb-0 fw-bold text-dark">
+                                Usuarios
+                                <span class="badge bg-primary-subtle text-primary ms-1">@usuariosFiltrados.Count</span>
+                            </h6>
+                        </div>
+
+                        <div class="col-sm-4">
+                            <select class="form-select form-select-sm" @bind="filtroRol">
+                                <option value="">Todos los roles</option>
+                                @foreach (var rol in roles)
+                                {
+                                    <option value="@rol.Nombre">@rol.Nombre</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-sm-4">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" class="form-control"
+                                       placeholder="Buscar usuario o nombre..."
+                                       @bind="textoBusqueda"
+                                       @bind:event="oninput" />
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="card-body p-0">
+
+                    @if (cargando)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2 text-muted mb-0">Cargando usuarios...</p>
+                        </div>
+                    }
+                    else if (usuariosFiltrados.Count == 0)
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-person-badge fs-1 d-block mb-2"></i>
+                            <p class="mb-0">No se encontraron usuarios registrados.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>Nombre / Contacto</th>
+                                        <th>Rol</th>
+                                        <th class="text-center">Estado</th>
+                                        <th class="text-end" style="width: 170px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var u in usuariosFiltrados)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="fw-bold font-monospace">@u.NombreUsuario</div>
+                                                <small class="text-muted">#@u.UsuarioId</small>
+                                            </td>
+                                            <td>
+                                                <div class="fw-semibold">@u.NombreCompleto</div>
+                                                @if (!string.IsNullOrWhiteSpace(u.Email))
+                                                {
+                                                    <small class="text-muted d-block">@u.Email</small>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(u.TecnicoNombre))
+                                                {
+                                                    <small class="text-primary"><i class="bi bi-wrench me-1"></i>@u.TecnicoNombre</small>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="badge @ObtenerBadgeRol(u.RolNombre)">
+                                                    @(string.IsNullOrWhiteSpace(u.RolNombre) ? $"Rol #{u.RolId}" : u.RolNombre)
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                @if (u.Activo)
+                                                {
+                                                    <span class="badge bg-success-subtle text-success">Activo</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary-subtle text-secondary">Inactivo</span>
+                                                }
+                                            </td>
+                                            <td class="text-end">
+                                                @if (idPendienteDesactivar == u.UsuarioId)
+                                                {
+                                                    <button class="btn btn-sm btn-danger me-1"
+                                                            @onclick="() => DesactivarUsuario(u.UsuarioId)"
+                                                            disabled="@desactivando">
+                                                        Sí
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary"
+                                                            @onclick="() => idPendienteDesactivar = null"
+                                                            disabled="@desactivando">
+                                                        No
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                                            title="Editar"
+                                                            @onclick="() => SeleccionarParaEditar(u)">
+                                                        <i class="bi bi-pencil-fill"></i>
+                                                    </button>
+                                                    @if (u.Activo)
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-danger"
+                                                                title="Desactivar usuario"
+                                                                @onclick="() => idPendienteDesactivar = u.UsuarioId">
+                                                            <i class="bi bi-person-slash"></i>
+                                                        </button>
+                                                    }
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<UsuarioDto> usuarios = new();
+    private List<RolDto> roles = new();
+    private List<TecnicoDto> tecnicos = new();
+    private UsuarioDto usuarioForm = new() { Activo = true };
+
+    private string textoBusqueda = string.Empty;
+    private string filtroRol = string.Empty;
+    private string mensajeExito = string.Empty;
+    private string mensajeError = string.Empty;
+
+    private bool cargando = true;
+    private bool guardando = false;
+    private bool desactivando = false;
+    private bool mostrarContrasena = false;
+    private int? idPendienteDesactivar = null;
+
+    private bool esEdicion => usuarioForm.UsuarioId > 0;
+
+    private List<UsuarioDto> usuariosFiltrados => usuarios
+        .Where(u =>
+            (string.IsNullOrWhiteSpace(textoBusqueda)
+                || u.NombreUsuario.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)
+                || u.NombreCompleto.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)
+                || (u.Email != null && u.Email.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase))) &&
+            (string.IsNullOrWhiteSpace(filtroRol)
+                || u.RolNombre.Equals(filtroRol, StringComparison.OrdinalIgnoreCase)))
+        .OrderByDescending(u => u.Activo)
+        .ThenBy(u => u.NombreCompleto)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+        mensajeError = string.Empty;
+
+        try
+        {
+            var tUsuarios = Http.GetFromJsonAsync<List<UsuarioDto>>("api/usuarios");
+            var tRoles = Http.GetFromJsonAsync<List<RolDto>>("api/usuarios/roles");
+            var tTecnicos = Http.GetFromJsonAsync<List<TecnicoDto>>("api/tecnicos");
+
+            await Task.WhenAll(tUsuarios, tRoles, tTecnicos);
+
+            usuarios = tUsuarios.Result ?? new();
+            roles = tRoles.Result ?? new();
+            tecnicos = tTecnicos.Result ?? new();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"No se pudieron cargar los datos de usuarios: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task GuardarUsuario()
+    {
+        mensajeError = string.Empty;
+        mensajeExito = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(usuarioForm.NombreUsuario))
+        {
+            mensajeError = "El nombre de usuario es obligatorio.";
+            return;
+        }
+
+        if (!esEdicion && string.IsNullOrWhiteSpace(usuarioForm.Contrasena))
+        {
+            mensajeError = "Debe asignar una contraseña para el nuevo usuario.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(usuarioForm.NombreCompleto))
+        {
+            mensajeError = "El nombre completo es obligatorio.";
+            return;
+        }
+
+        if (usuarioForm.RolId <= 0)
+        {
+            mensajeError = "Debe seleccionar un rol.";
+            return;
+        }
+
+        usuarioForm.NombreUsuario = usuarioForm.NombreUsuario.Trim();
+        usuarioForm.NombreCompleto = usuarioForm.NombreCompleto.Trim();
+        guardando = true;
+
+        try
+        {
+            HttpResponseMessage response = esEdicion
+                ? await Http.PutAsJsonAsync($"api/usuarios/{usuarioForm.UsuarioId}", usuarioForm)
+                : await Http.PostAsJsonAsync("api/usuarios", usuarioForm);
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensajeExito = esEdicion
+                    ? "Usuario actualizado correctamente."
+                    : "Usuario registrado correctamente.";
+
+                usuarioForm = new() { Activo = true };
+                mostrarContrasena = false;
+                await CargarDatos();
+            }
+            else
+            {
+                var error = await LeerMensajeErrorAsync(response);
+                mensajeError = error ?? "No se pudo guardar el usuario.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al guardar el usuario: {ex.Message}";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private void SeleccionarParaEditar(UsuarioDto u)
+    {
+        mensajeError = string.Empty;
+        mensajeExito = string.Empty;
+        idPendienteDesactivar = null;
+        mostrarContrasena = false;
+
+        usuarioForm = new UsuarioDto
+        {
+            UsuarioId = u.UsuarioId,
+            NombreUsuario = u.NombreUsuario,
+            Contrasena = string.Empty,
+            NombreCompleto = u.NombreCompleto,
+            Email = u.Email,
+            Telefono = u.Telefono,
+            RolId = u.RolId,
+            TecnicoId = u.TecnicoId,
+            Activo = u.Activo
+        };
+    }
+
+    private void CancelarEdicion()
+    {
+        usuarioForm = new() { Activo = true };
+        mostrarContrasena = false;
+        mensajeError = string.Empty;
+    }
+
+    private async Task DesactivarUsuario(int usuarioId)
+    {
+        mensajeError = string.Empty;
+        mensajeExito = string.Empty;
+        desactivando = true;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"api/usuarios/{usuarioId}");
+            if (response.IsSuccessStatusCode)
+            {
+                mensajeExito = $"Usuario #{usuarioId} desactivado correctamente.";
+                await CargarDatos();
+            }
+            else
+            {
+                var error = await LeerMensajeErrorAsync(response);
+                mensajeError = error ?? "No se pudo desactivar el usuario.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al desactivar el usuario: {ex.Message}";
+        }
+        finally
+        {
+            desactivando = false;
+            idPendienteDesactivar = null;
+        }
+    }
+
+    private static string ObtenerBadgeRol(string rol)
+    {
+        var r = rol.ToLower();
+        if (r.Contains("admin")) return "bg-danger";
+        if (r.Contains("vendedor")) return "bg-primary";
+        if (r.Contains("tecnico") || r.Contains("técnico")) return "bg-info text-dark";
+        return "bg-secondary";
+    }
+
+    private static async Task<string?> LeerMensajeErrorAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var err = await response.Content.ReadFromJsonAsync<ApiMensajeError>();
+            return err?.Mensaje;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private sealed class ApiMensajeError
+    {
+        public string? Mensaje { get; set; }
+    }
+}

@@ -13,4 +13,6 @@ builder.Services.AddScoped(sp => new HttpClient
     BaseAddress = new Uri(apiBaseUrl.EndsWith('/') ? apiBaseUrl : $"{apiBaseUrl}/") 
 });
 
+builder.Services.AddScoped<SesionService>();
+
 await builder.Build().RunAsync();

@@ -1,0 +1,578 @@
+﻿@page "/ordenes"
+@inject HttpClient Http
+
+<PageTitle>Recepción y Órdenes | TechService</PageTitle>
+
+<div class="container my-4">
+
+    <!-- Encabezado -->
+    <div class="row mb-4 align-items-center">
+
+        <div class="col-md-8">
+            <h2 class="fw-bold text-primary mb-1">
+                <i class="bi bi-clipboard-check-fill me-2"></i>Recepción y Órdenes de Reparación
+            </h2>
+            <p class="text-muted mb-0">Registra ingresos de equipos, asigna técnicos y actualiza el estado en tiempo real.</p>
+        </div>
+
+        <div class="col-md-4 text-md-end mt-3 mt-md-0 d-flex justify-content-md-end gap-2">
+
+            <button class="btn btn-primary" @onclick="() => mostrarFormulario = !mostrarFormulario">
+                <i class="bi @(mostrarFormulario ? "bi-chevron-up" : "bi-plus-circle-fill") me-1"></i>
+                @(mostrarFormulario ? "Ocultar Formulario" : "Nueva Orden")
+            </button>
+
+            <button class="btn btn-outline-primary" @onclick="CargarDatos" disabled="@cargando">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    @if (!string.IsNullOrEmpty(mensajeExito))
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm border-0" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@mensajeExito
+            @if (!string.IsNullOrEmpty(ultimoCodigoTracking))
+            {
+                <a href="tracking/@ultimoCodigoTracking" class="btn btn-sm btn-success ms-3">
+                    <i class="bi bi-broadcast me-1"></i>Ver en Tracking (@ultimoCodigoTracking)
+                </a>
+            }
+            <button type="button" class="btn-close" @onclick="LimpiarMensajes"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(mensajeError))
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@mensajeError
+            <button type="button" class="btn-close" @onclick="() => mensajeError = string.Empty"></button>
+        </div>
+    }
+
+    <!-- Formulario de Recepción de Nueva Orden -->
+    @if (mostrarFormulario)
+    {
+        <div class="card shadow-sm border-0 mb-4">
+
+            <div class="card-header text-white py-3" style="background-color: #0b162c;">
+                <h6 class="mb-0 fw-bold">
+                    <i class="bi bi-box-seam-fill me-2 text-primary"></i>Registrar Nueva Orden de Reparación
+                </h6>
+            </div>
+
+            <div class="card-body">
+                <EditForm Model="ordenForm" OnValidSubmit="CrearOrden">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Cliente *</label>
+                            <select class="form-select" @bind="ordenForm.ClienteId" disabled="@guardando">
+                                <option value="0">-- Seleccione un cliente --</option>
+                                @foreach (var c in clientes)
+                                {
+                                    <option value="@c.ClienteId">@c.Nombre (#@c.ClienteId)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Tipo de Equipo *</label>
+                            <select class="form-select"
+                                    @bind="ordenForm.TipoEquipoId"
+                                    @bind:after="AlCambiarTipoEquipo"
+                                    disabled="@guardando">
+                                <option value="0">-- Seleccione tipo --</option>
+                                @foreach (var tipo in tiposEquipo)
+                                {
+                                    <option value="@tipo.TipoEquipoId">@tipo.Nombre</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Técnico Asignado <small class="text-muted fw-normal">(según especialidad)</small></label>
+                            <select class="form-select"
+                                    @bind="ordenForm.TecnicoId"
+                                    disabled="@(guardando || ordenForm.TipoEquipoId <= 0)">
+                                <option value="">@(ordenForm.TipoEquipoId <= 0 ? "-- Primero elija tipo de equipo --" : "-- Sin asignar --")</option>
+                                @foreach (var t in tecnicosSegunEspecialidad)
+                                {
+                                    <option value="@t.TecnicoId">@t.Nombre (@t.Especialidad)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Marca / Modelo *</label>
+                            <InputText class="form-control"
+                                       placeholder="Ej: iPhone 14 Pro / Dell Inspiron"
+                                       @bind-Value="ordenForm.MarcaModelo"
+                                       disabled="@guardando" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Número de Serie / IMEI *</label>
+                            <InputText class="form-control font-monospace"
+                                       placeholder="Ej: 358912345678901"
+                                       @bind-Value="ordenForm.NumeroSerieImei"
+                                       disabled="@guardando" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">PIN / Patrón <small class="text-muted fw-normal">(opcional)</small></label>
+                            <input type="text" class="form-control"
+                                   placeholder="Ej: 1234 o Sin clave"
+                                   @bind="ordenForm.PinDesbloqueo"
+                                   disabled="@guardando" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Prioridad</label>
+                            <select class="form-select" @bind="ordenForm.PrioridadId" disabled="@guardando">
+                                <option value="1">Normal</option>
+                                <option value="2">Express 24h</option>
+                                <option value="3">Garantía</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Entrega Estimada</label>
+                            <InputDate class="form-control"
+                                       @bind-Value="ordenForm.FechaEntregaEstimada"
+                                       disabled="@guardando" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Costo Mano de Obra (RD$)</label>
+                            <InputNumber class="form-control font-monospace"
+                                         @bind-Value="ordenForm.CostoManoObra"
+                                         disabled="@guardando" />
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Fallo Reportado por el Cliente *</label>
+                            <InputTextArea class="form-control" rows="2"
+                                           placeholder="Describe la falla del equipo..."
+                                           @bind-Value="ordenForm.FalloReportado"
+                                           disabled="@guardando" />
+                        </div>
+
+                        <!-- Checklist físico de ingreso -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold d-block mb-2">Checklist Físico de Recepción</label>
+                            <div class="d-flex flex-wrap gap-4 bg-light p-3 rounded border">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="chkEnciende" @bind="ordenForm.IngresoEnciende" disabled="@guardando" />
+                                    <label class="form-check-label" for="chkEnciende">Enciende al ingresar</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="chkPantalla" @bind="ordenForm.IngresoPantallaRota" disabled="@guardando" />
+                                    <label class="form-check-label" for="chkPantalla">Pantalla rota</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="chkMojado" @bind="ordenForm.IngresoMojado" disabled="@guardando" />
+                                    <label class="form-check-label" for="chkMojado">Signos de humedad/mojado</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="chkCargador" @bind="ordenForm.IngresoDejaCargador" disabled="@guardando" />
+                                    <label class="form-check-label" for="chkCargador">Deja cargador</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="chkAprobado" @bind="ordenForm.PresupuestoAprobadoCliente" disabled="@guardando" />
+                                    <label class="form-check-label" for="chkAprobado">Presupuesto aprobado</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 text-end">
+                            <button type="button" class="btn btn-outline-secondary me-2" @onclick="LimpiarFormulario" disabled="@guardando">
+                                Limpiar
+                            </button>
+                            <button type="submit" class="btn btn-primary px-4 fw-semibold" disabled="@guardando">
+                                @if (guardando)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Registrando...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-save me-1"></i>
+                                    <span>Registrar Orden</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    <!-- Filtros y Listado de Órdenes -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-4">
+                    <h6 class="mb-0 fw-bold text-dark">
+                        Órdenes Registradas
+                        <span class="badge bg-primary-subtle text-primary ms-1">@ordenesFiltradas.Count</span>
+                    </h6>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select form-select-sm" @bind="filtroEstado">
+                        <option value="">Todos los estados</option>
+                        @foreach (var est in estadosDisponibles)
+                        {
+                            <option value="@est.ValorApi">@est.Etiqueta</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" class="form-control"
+                               placeholder="Buscar tracking, cliente o modelo..."
+                               @bind="textoBusqueda"
+                               @bind:event="oninput" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            @if (cargando)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted mb-0">Cargando órdenes de reparación...</p>
+                </div>
+            }
+            else if (ordenesFiltradas.Count == 0)
+            {
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-clipboard-x fs-1 d-block mb-2"></i>
+                    <p class="mb-0">No se encontraron órdenes con los filtros actuales.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tracking</th>
+                                <th>Cliente</th>
+                                <th>Equipo / Fallo</th>
+                                <th>Técnico</th>
+                                <th>Estado</th>
+                                <th class="text-end">Mano Obra</th>
+                                <th class="text-end">Seguimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var orden in ordenesFiltradas)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-dark font-monospace">@orden.CodigoTracking</span>
+                                        <small class="text-muted d-block mt-1">
+                                            @(orden.FechaIngreso?.ToLocalTime().ToString("dd/MM/yyyy") ?? "N/D")
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">@(orden.ClienteNombre ?? $"Cliente #{orden.ClienteId}")</div>
+                                        @if (!string.IsNullOrWhiteSpace(orden.ClienteTelefono))
+                                        {
+                                            <small class="text-muted">@orden.ClienteTelefono</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">@orden.MarcaModelo</div>
+                                        <small class="text-muted d-block">@orden.TipoEquipoNombre · @orden.FalloReportado</small>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(orden.TecnicoNombre))
+                                        {
+                                            <span class="badge bg-info-subtle text-info-emphasis">@orden.TecnicoNombre</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">Sin asignar</span>
+                                        }
+                                    </td>
+                                    <td style="min-width: 185px;">
+                                        <select class="form-select form-select-sm"
+                                                disabled="@(ordenActualizandoId == orden.OrdenId)"
+                                                @onchange="(e) => CambiarEstadoOrden(orden, e.Value?.ToString())">
+                                            @foreach (var est in estadosDisponibles)
+                                            {
+                                                <option value="@est.ValorApi" selected="@EsEstadoActual(orden, est)">
+                                                    @est.Etiqueta
+                                                </option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td class="text-end font-monospace fw-semibold">
+                                        RD$ @orden.CostoManoObra.ToString("N2")
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="tracking/@orden.CodigoTracking"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Abrir seguimiento en vivo y chat">
+                                            <i class="bi bi-broadcast me-1"></i>Ver
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<OrdenDto> ordenes = new();
+    private List<ClienteDto> clientes = new();
+    private List<TecnicoDto> tecnicos = new();
+    private List<TipoEquipoItem> tiposEquipo = new();
+
+    private OrdenDto ordenForm = CrearFormularioInicial();
+
+    private bool mostrarFormulario = false;
+    private bool cargando = true;
+    private bool guardando = false;
+    private int? ordenActualizandoId = null;
+
+    private string textoBusqueda = string.Empty;
+    private string filtroEstado = string.Empty;
+    private string mensajeExito = string.Empty;
+    private string mensajeError = string.Empty;
+    private string ultimoCodigoTracking = string.Empty;
+
+    private readonly List<EstadoOpcion> estadosDisponibles =
+    [
+        new(1, "Recibido", "1. Recibido"),
+        new(2, "RevisionPlaca", "2. Revisión de Placa"),
+        new(3, "EsperandoAprobacion", "3. Esperando Aprobación"),
+        new(4, "CambioPieza", "4. Cambio de Pieza"),
+        new(5, "PruebasEncendido", "5. Pruebas de Encendido"),
+        new(6, "Reparado", "6. Reparado"),
+        new(7, "Entregado", "7. Entregado")
+    ];
+
+    private List<OrdenDto> ordenesFiltradas => ordenes
+        .Where(o =>
+            (string.IsNullOrWhiteSpace(textoBusqueda)
+                || o.CodigoTracking.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)
+                || (o.ClienteNombre != null && o.ClienteNombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase))
+                || o.MarcaModelo.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)
+                || o.NumeroSerieImei.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(filtroEstado)
+                || o.EstadoNombre.Equals(filtroEstado, StringComparison.OrdinalIgnoreCase)))
+        .OrderByDescending(o => o.OrdenId)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+        mensajeError = string.Empty;
+
+        try
+        {
+            var tOrdenes = Http.GetFromJsonAsync<List<OrdenDto>>("api/ordenesreparacion");
+            var tClientes = Http.GetFromJsonAsync<List<ClienteDto>>("api/clientes");
+            var tTecnicos = Http.GetFromJsonAsync<List<TecnicoDto>>("api/tecnicos");
+            var tTipos = Http.GetFromJsonAsync<List<TipoEquipoItem>>("api/ordenesreparacion/tipos-equipo");
+
+            await Task.WhenAll(tOrdenes, tClientes, tTecnicos, tTipos);
+
+            ordenes = tOrdenes.Result ?? new();
+            clientes = tClientes.Result ?? new();
+            tecnicos = tTecnicos.Result ?? new();
+            tiposEquipo = tTipos.Result ?? new();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al cargar las órdenes: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task CrearOrden()
+    {
+        LimpiarMensajes();
+
+        if (ordenForm.ClienteId <= 0)
+        {
+            mensajeError = "Debe seleccionar un cliente.";
+            return;
+        }
+        if (ordenForm.TipoEquipoId <= 0)
+        {
+            mensajeError = "Debe seleccionar un tipo de equipo.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(ordenForm.MarcaModelo))
+        {
+            mensajeError = "Debe indicar la marca y modelo del equipo.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(ordenForm.NumeroSerieImei))
+        {
+            mensajeError = "Debe indicar el número de serie o IMEI.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(ordenForm.FalloReportado))
+        {
+            mensajeError = "Debe describir el fallo reportado.";
+            return;
+        }
+
+        ordenForm.EstadoId = 1; // Recibido
+        ordenForm.FechaIngreso = DateTime.UtcNow;
+        guardando = true;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/ordenesreparacion", ordenForm);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var creada = await response.Content.ReadFromJsonAsync<OrdenDto>();
+                ultimoCodigoTracking = creada?.CodigoTracking ?? string.Empty;
+                mensajeExito = "Orden de reparación registrada correctamente.";
+
+                ordenForm = CrearFormularioInicial();
+                mostrarFormulario = false;
+                await CargarDatos();
+            }
+            else
+            {
+                mensajeError = "No fue posible registrar la orden de reparación.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al registrar la orden: {ex.Message}";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private async Task CambiarEstadoOrden(OrdenDto orden, string? nuevoEstado)
+    {
+        if (string.IsNullOrWhiteSpace(nuevoEstado)) return;
+
+        LimpiarMensajes();
+        ordenActualizandoId = orden.OrdenId;
+
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"api/ordenesreparacion/{orden.OrdenId}/estado", nuevoEstado);
+            if (response.IsSuccessStatusCode)
+            {
+                mensajeExito = $"Estado de la orden {orden.CodigoTracking} actualizado a '{nuevoEstado}'.";
+                await CargarDatos();
+            }
+            else
+            {
+                mensajeError = $"No se pudo actualizar el estado de la orden {orden.CodigoTracking}.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al cambiar estado: {ex.Message}";
+        }
+        finally
+        {
+            ordenActualizandoId = null;
+        }
+    }
+
+    private static bool EsEstadoActual(OrdenDto orden, EstadoOpcion est)
+    {
+        if (!string.IsNullOrWhiteSpace(orden.EstadoNombre))
+            return orden.EstadoNombre.Equals(est.ValorApi, StringComparison.OrdinalIgnoreCase);
+
+        return orden.EstadoId == est.Id;
+    }
+
+    private static OrdenDto CrearFormularioInicial() => new()
+    {
+        EstadoId = 1,
+        PrioridadId = 1,
+        FechaEntregaEstimada = DateTime.Today.AddDays(3),
+        IngresoEnciende = true,
+        PresupuestoAprobadoCliente = true
+    };
+
+    private void LimpiarFormulario()
+    {
+        ordenForm = CrearFormularioInicial();
+        mensajeError = string.Empty;
+    }
+
+    private void LimpiarMensajes()
+    {
+        mensajeExito = string.Empty;
+        mensajeError = string.Empty;
+        ultimoCodigoTracking = string.Empty;
+    }
+
+    private List<TecnicoDto> tecnicosSegunEspecialidad
+    {
+        get
+        {
+            if (ordenForm.TipoEquipoId <= 0)
+                return new();
+
+            var tipoSeleccionado = tiposEquipo
+                .FirstOrDefault(t => t.TipoEquipoId == ordenForm.TipoEquipoId)?.Nombre;
+
+            if (string.IsNullOrWhiteSpace(tipoSeleccionado)
+                || tipoSeleccionado.Equals("Universal", StringComparison.OrdinalIgnoreCase))
+            {
+                return tecnicos;
+            }
+
+            var coincidentes = tecnicos
+                .Where(t => !string.IsNullOrWhiteSpace(t.Especialidad)
+                    && (t.Especialidad.Contains(tipoSeleccionado, StringComparison.OrdinalIgnoreCase)
+                        || t.Especialidad.Contains("General", StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            return coincidentes.Count > 0 ? coincidentes : tecnicos;
+        }
+    }
+
+    private void AlCambiarTipoEquipo()
+    {
+        // Si el técnico seleccionado ya no coincide con el nuevo tipo de equipo, se limpia
+        if (ordenForm.TecnicoId.HasValue
+            && !tecnicosSegunEspecialidad.Any(t => t.TecnicoId == ordenForm.TecnicoId.Value))
+        {
+            ordenForm.TecnicoId = null;
+        }
+    }
+
+    private sealed class TipoEquipoItem
+    {
+        public int TipoEquipoId { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+    }
+
+    private sealed record EstadoOpcion(int Id, string ValorApi, string Etiqueta);
+}

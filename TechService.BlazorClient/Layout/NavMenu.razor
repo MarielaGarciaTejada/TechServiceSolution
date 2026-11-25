@@ -1,3 +1,7 @@
+@inject SesionService Sesion
+@inject NavigationManager Navigation
+@implements IDisposable
+
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand fw-semibold" href="">
@@ -26,16 +30,61 @@
                 <i class="bi bi-tag-fill me-3 fs-5"></i> Catálogo & Tarifas
             </NavLink>
         </div>
+
+        @if (Sesion.EstaAutenticado)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link px-3" href="ordenes">
+                    <i class="bi bi-clipboard-check-fill me-3 fs-5"></i> Órdenes
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link px-3" href="clientes">
+                    <i class="bi bi-person-lines-fill me-3 fs-5"></i> Clientes
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link px-3" href="tecnicos">
+                    <i class="bi bi-wrench-adjustable-circle-fill me-3 fs-5"></i> Técnicos
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link px-3" href="usuarios">
+                    <i class="bi bi-person-badge-fill me-3 fs-5"></i> Usuarios
+                </NavLink>
+            </div>
+            <div class="nav-item px-3 mt-2">
+                <a class="nav-link px-3 text-danger" href="javascript:void(0)" @onclick="Salir">
+                    <i class="bi bi-box-arrow-right me-3 fs-5"></i> Salir (@Sesion.UsuarioActual?.NombreUsuario)
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="nav-item px-3 mt-2">
+                <NavLink class="nav-link px-3" href="login">
+                    <i class="bi bi-shield-lock-fill me-3 fs-5"></i> Acceso Personal
+                </NavLink>
+            </div>
+        }
     </nav>
 </div>
 
 @code {
     private bool collapseNavMenu = true;
-
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
-    private void ToggleNavMenu()
+    protected override void OnInitialized() => Sesion.OnChange += ActualizarVista;
+
+    private void ActualizarVista() => InvokeAsync(StateHasChanged);
+
+    private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
+
+    private void Salir()
     {
-        collapseNavMenu = !collapseNavMenu;
+        Sesion.CerrarSesion();
+        Navigation.NavigateTo("");
     }
+
+    public void Dispose() => Sesion.OnChange -= ActualizarVista;
 }

@@ -1,0 +1,334 @@
+﻿@page "/clientes"
+@inject HttpClient Http
+
+<PageTitle>Gestión de Clientes | TechService</PageTitle>
+
+<div class="container my-4">
+
+    <!-- Encabezado -->
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h2 class="fw-bold text-primary mb-1">
+                <i class="bi bi-people-fill me-2"></i>Gestión de Clientes
+            </h2>
+            <p class="text-muted mb-0">Registra, consulta, modifica y elimina los clientes del taller.</p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <button class="btn btn-outline-primary" @onclick="CargarClientes" disabled="@cargando">
+                <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- Alertas de éxito o error -->
+    @if (!string.IsNullOrEmpty(mensajeExito))
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm border-0" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>@mensajeExito
+            <button type="button" class="btn-close" @onclick="() => mensajeExito = string.Empty"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(mensajeError))
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@mensajeError
+            <button type="button" class="btn-close" @onclick="() => mensajeError = string.Empty"></button>
+        </div>
+    }
+
+    <div class="row g-4">
+
+        <!-- Columna Izquierda: Formulario Crear / Editar -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header text-white py-3" style="background-color: #0b162c;">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="bi @(esEdicion ? "bi-pencil-square" : "bi-person-plus-fill") me-2 text-primary"></i>
+                        @(esEdicion ? $"Editar Cliente #{clienteForm.ClienteId}" : "Nuevo Cliente")
+                    </h6>
+                </div>
+
+                <div class="card-body">
+                    <EditForm Model="clienteForm" OnValidSubmit="GuardarCliente">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nombre Completo</label>
+                            <InputText class="form-control"
+                                       placeholder="Ej: Juan Pérez"
+                                       @bind-Value="clienteForm.Nombre"
+                                       disabled="@guardando" />
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary fw-semibold" disabled="@guardando">
+                                @if (guardando)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Guardando...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-save me-1"></i>
+                                    <span>@(esEdicion ? "Actualizar Cliente" : "Registrar Cliente")</span>
+                                }
+                            </button>
+
+                            @if (esEdicion)
+                            {
+                                <button type="button" class="btn btn-outline-secondary" @onclick="CancelarEdicion" disabled="@guardando">
+                                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                                </button>
+                            }
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Buscador y Tabla de Clientes -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-sm-6">
+                            <h6 class="mb-0 fw-bold text-dark">
+                                Listado de Clientes
+                                <span class="badge bg-primary-subtle text-primary ms-1">@clientesFiltrados.Count</span>
+                            </h6>
+                        </div>
+
+                        <div class="col-sm-6">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" class="form-control"
+                                       placeholder="Buscar por nombre o ID..."
+                                       @bind="textoBusqueda"
+                                       @bind:event="oninput" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body p-0">
+                    @if (cargando)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2 text-muted mb-0">Cargando clientes...</p>
+                        </div>
+                    }
+                    else if (clientesFiltrados.Count == 0)
+                    {
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-people fs-1 d-block mb-2"></i>
+                            <p class="mb-0">No se encontraron clientes registrados.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 90px;">ID</th>
+                                        <th>Nombre</th>
+                                        <th class="text-end" style="width: 190px;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var cliente in clientesFiltrados)
+                                    {
+                                        <tr>
+                                            <td class="font-monospace text-muted">#@cliente.ClienteId</td>
+                                            <td class="fw-semibold">@cliente.Nombre</td>
+                                            <td class="text-end">
+                                                @if (idPendienteEliminar == cliente.ClienteId)
+                                                {
+                                                    <button class="btn btn-sm btn-danger me-1"
+                                                            @onclick="() => EliminarCliente(cliente.ClienteId)"
+                                                            disabled="@eliminando">
+                                                        Confirmar
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary"
+                                                            @onclick="() => idPendienteEliminar = null"
+                                                            disabled="@eliminando">
+                                                        No
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                                            title="Editar"
+                                                            @onclick="() => SeleccionarParaEditar(cliente)">
+                                                        <i class="bi bi-pencil-fill"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger"
+                                                            title="Eliminar"
+                                                            @onclick="() => idPendienteEliminar = cliente.ClienteId">
+                                                        <i class="bi bi-trash-fill"></i>
+                                                    </button>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ClienteDto> clientes = new();
+    private ClienteDto clienteForm = new();
+
+    private string textoBusqueda = string.Empty;
+    private string mensajeExito = string.Empty;
+    private string mensajeError = string.Empty;
+
+    private bool cargando = true;
+    private bool guardando = false;
+    private bool eliminando = false;
+    private int? idPendienteEliminar = null;
+
+    private bool esEdicion => clienteForm.ClienteId > 0;
+
+    private List<ClienteDto> clientesFiltrados => clientes
+        .Where(c => string.IsNullOrWhiteSpace(textoBusqueda)
+            || c.Nombre.Contains(textoBusqueda, StringComparison.OrdinalIgnoreCase)
+            || c.ClienteId.ToString().Contains(textoBusqueda.Trim()))
+        .OrderByDescending(c => c.ClienteId)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarClientes();
+    }
+
+    private async Task CargarClientes()
+    {
+        cargando = true;
+        mensajeError = string.Empty;
+
+        try
+        {
+            var lista = await Http.GetFromJsonAsync<List<ClienteDto>>("api/clientes");
+            clientes = lista ?? new();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"No se pudo cargar la lista de clientes: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task GuardarCliente()
+    {
+        mensajeError = string.Empty;
+        mensajeExito = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(clienteForm.Nombre))
+        {
+            mensajeError = "El nombre del cliente es obligatorio.";
+            return;
+        }
+
+        clienteForm.Nombre = clienteForm.Nombre.Trim();
+        guardando = true;
+
+        try
+        {
+            HttpResponseMessage response;
+
+            if (esEdicion)
+            {
+                response = await Http.PutAsJsonAsync($"api/clientes/{clienteForm.ClienteId}", clienteForm);
+            }
+            else
+            {
+                response = await Http.PostAsJsonAsync("api/clientes", clienteForm);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensajeExito = esEdicion
+                    ? "Cliente actualizado correctamente."
+                    : "Cliente registrado correctamente.";
+
+                clienteForm = new();
+                await CargarClientes();
+            }
+            else
+            {
+                mensajeError = "No se pudo guardar el cliente en el servidor.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al guardar el cliente: {ex.Message}";
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private void SeleccionarParaEditar(ClienteDto cliente)
+    {
+        mensajeError = string.Empty;
+        mensajeExito = string.Empty;
+        idPendienteEliminar = null;
+
+        clienteForm = new ClienteDto
+        {
+            ClienteId = cliente.ClienteId,
+            Nombre = cliente.Nombre
+        };
+    }
+
+    private void CancelarEdicion()
+    {
+        clienteForm = new();
+        mensajeError = string.Empty;
+    }
+
+    private async Task EliminarCliente(int clienteId)
+    {
+        mensajeError = string.Empty;
+        mensajeExito = string.Empty;
+        eliminando = true;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"api/clientes/{clienteId}");
+            if (response.IsSuccessStatusCode)
+            {
+                mensajeExito = $"Cliente #{clienteId} eliminado correctamente.";
+                if (clienteForm.ClienteId == clienteId)
+                {
+                    clienteForm = new();
+                }
+                await CargarClientes();
+            }
+            else
+            {
+                mensajeError = "No se pudo eliminar el cliente (puede tener órdenes o ventas asociadas).";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al eliminar el cliente: {ex.Message}";
+        }
+        finally
+        {
+            eliminando = false;
+            idPendienteEliminar = null;
+        }
+    }
+}

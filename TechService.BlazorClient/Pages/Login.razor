@@ -1,0 +1,104 @@
+@page "/login"
+@inject HttpClient Http
+@inject SesionService Sesion
+@inject NavigationManager Navigation
+
+<PageTitle>Iniciar Sesión | TechService</PageTitle>
+
+<div class="container py-5">
+
+    <div class="row justify-content-center">
+
+        <div class="col-md-5">
+
+            <div class="card shadow border-0">
+
+                <div class="card-header text-white text-center py-3" style="background-color: #0b162c;">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-shield-lock-fill text-primary me-2"></i>Acceso del Personal
+                    </h5>
+                </div>
+
+                <div class="card-body p-4">
+                    @if (!string.IsNullOrEmpty(mensajeError))
+                    {
+                        <div class="alert alert-danger py-2">@mensajeError</div>
+                    }
+
+                    <EditForm Model="login" OnValidSubmit="Entrar">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Usuario</label>
+                            <InputText class="form-control" placeholder="Ej: admin" @bind-Value="login.NombreUsuario" disabled="@cargando" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Contraseña</label>
+                            <InputText type="password" class="form-control" placeholder="••••••••" @bind-Value="login.Contrasena" disabled="@cargando" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 fw-semibold" disabled="@cargando">
+                            @(cargando ? "Verificando..." : "Iniciar Sesión")
+                        </button>
+                    </EditForm>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+@code {
+    private LoginRequestDto login = new();
+    private bool cargando = false;
+    private string mensajeError = string.Empty;
+
+    private async Task Entrar()
+    {
+        mensajeError = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(login.NombreUsuario) || string.IsNullOrWhiteSpace(login.Contrasena))
+        {
+            mensajeError = "Debe ingresar usuario y contraseña.";
+            return;
+        }
+
+        cargando = true;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/usuarios/login", login);
+            LoginResponseDto? resultado = null;
+
+            try
+            {
+                resultado = await response.Content.ReadFromJsonAsync<LoginResponseDto>();
+            }
+            catch
+            {
+                // Ignorar si la respuesta no tiene cuerpo JSON válido
+            }
+
+            if (response.IsSuccessStatusCode && resultado?.Exito == true && resultado.Usuario != null)
+            {
+                Sesion.IniciarSesion(resultado.Usuario);
+                Navigation.NavigateTo("ordenes");
+            }
+            else
+            {
+                mensajeError = resultado?.Mensaje ?? "Usuario o contraseña incorrectos.";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error de conexión: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+}
