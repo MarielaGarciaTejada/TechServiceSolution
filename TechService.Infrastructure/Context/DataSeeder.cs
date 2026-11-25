@@ -162,6 +162,7 @@ public static class DataSeeder
 
         var tipoCelular = await db.TiposEquipos.FirstAsync(t => t.Nombre == "Celular");
         var tipoLaptop = await db.TiposEquipos.FirstAsync(t => t.Nombre == "Laptop");
+        var tipoConsola = await db.TiposEquipos.FirstAsync(t => t.Nombre == "Consola");
         var tipoUniversal = await db.TiposEquipos.FirstAsync(t => t.Nombre == "Universal");
 
         var tipoAccesorio = await db.TiposItems.FirstAsync(t => t.Nombre == "AccesorioPOS");
@@ -171,7 +172,10 @@ public static class DataSeeder
         var estadoAprobado = await db.EstadosAprobacions.FirstAsync(e => e.Nombre == "Aprobado");
         var metodoEfectivo = await db.MetodosPagos.FirstAsync(m => m.Nombre == "Efectivo");
 
-        var listaTecnicos = await db.Tecnicos.ToListAsync();
+        var listaTecnicos = await db.Tecnicos.OrderBy(t => t.TecnicoId).ToListAsync();
+        var tecnicoCelulares = listaTecnicos.FirstOrDefault(t => t.Nombre == "Carlos Mendoza") ?? listaTecnicos[0];
+        var tecnicoLaptops = listaTecnicos.FirstOrDefault(t => t.Nombre == "Laura Ramirez") ?? listaTecnicos[1];
+        var tecnicoConsolas = listaTecnicos.FirstOrDefault(t => t.Nombre == "Jorge Pereira") ?? listaTecnicos[2];
 
         // ── CLIENTES ──────────────────────────────────────────────────────
         var clientes = new List<Cliente>
@@ -189,7 +193,7 @@ public static class DataSeeder
             new() { CodigoSku = "ACC-CARG-65W", Nombre = "Cargador Rápido USB-C 65W GaN",        TipoItemId = tipoAccesorio.TipoItemId, TipoEquipoId = tipoUniversal.TipoEquipoId, Precio = 1850.00m, Stock = 15, StockMinimoAlerta = 3 },
             new() { CodigoSku = "ACC-MICA-IP15", Nombre = "Mica de Vidrio Privacidad iPhone 15", TipoItemId = tipoAccesorio.TipoItemId, TipoEquipoId = tipoCelular.TipoEquipoId,   Precio = 450.00m,  Stock = 2,  StockMinimoAlerta = 5 },
             new() { CodigoSku = "REP-BAT-IP13",  Nombre = "Batería Original iPhone 13",          TipoItemId = tipoRepuesto.TipoItemId,  TipoEquipoId = tipoCelular.TipoEquipoId,   Precio = 3200.00m, Stock = 8,  StockMinimoAlerta = 2 },
-            new() { CodigoSku = "REP-HDMI-PS5",  Nombre = "Puerto HDMI OEM PlayStation 5",       TipoItemId = tipoRepuesto.TipoItemId,  TipoEquipoId = tipoUniversal.TipoEquipoId, Precio = 2500.00m, Stock = 10, StockMinimoAlerta = 2 },
+            new() { CodigoSku = "REP-HDMI-PS5",  Nombre = "Puerto HDMI OEM PlayStation 5",       TipoItemId = tipoRepuesto.TipoItemId,  TipoEquipoId = tipoConsola.TipoEquipoId,   Precio = 2500.00m, Stock = 10, StockMinimoAlerta = 2 },
             new() { CodigoSku = "SRV-MAN-LAPTOP", Nombre = "Mantenimiento Térmico y Pasta",       TipoItemId = tipoServicio.TipoItemId,  TipoEquipoId = tipoLaptop.TipoEquipoId,    Precio = 1500.00m, Stock = 99, StockMinimoAlerta = 1 },
             new() { CodigoSku = "SRV-MICROSOLD",  Nombre = "Diagnóstico y Reballing de Placa",   TipoItemId = tipoServicio.TipoItemId,  TipoEquipoId = tipoUniversal.TipoEquipoId, Precio = 4500.00m, Stock = 99, StockMinimoAlerta = 1 },
         };
@@ -203,7 +207,7 @@ public static class DataSeeder
             {
                 CodigoTracking        = "TS-2026-0001",
                 ClienteId             = clientes[0].ClienteId,
-                TecnicoId             = listaTecnicos[0].TecnicoId,
+                TecnicoId             = tecnicoCelulares.TecnicoId,
                 TipoEquipoId          = tipoCelular.TipoEquipoId,
                 EstadoId              = estadoRevision.EstadoId,
                 PrioridadId           = prioridadExpress.PrioridadId,
@@ -228,7 +232,7 @@ public static class DataSeeder
             {
                 CodigoTracking        = "TS-2026-0002",
                 ClienteId             = clientes[1].ClienteId,
-                TecnicoId             = listaTecnicos[1].TecnicoId,
+                TecnicoId             = tecnicoLaptops.TecnicoId,
                 TipoEquipoId          = tipoLaptop.TipoEquipoId,
                 EstadoId              = estadoRecibido.EstadoId,
                 PrioridadId           = prioridadNormal.PrioridadId,
@@ -248,6 +252,7 @@ public static class DataSeeder
             {
                 CodigoTracking        = "TS-2026-0003",
                 ClienteId             = clientes[2].ClienteId,
+                TecnicoId             = tecnicoCelulares.TecnicoId,
                 TipoEquipoId          = tipoCelular.TipoEquipoId,
                 EstadoId              = estadoReparado.EstadoId,
                 PrioridadId           = prioridadNormal.PrioridadId,
@@ -267,6 +272,30 @@ public static class DataSeeder
                 CostoManoObra         = 1000.00m,
                 PresupuestoAprobadoCliente = true,
             },
+            new()
+            {
+                CodigoTracking        = "TS-2026-0004",
+                ClienteId             = clientes[1].ClienteId,
+                TecnicoId             = tecnicoConsolas.TecnicoId,
+                TipoEquipoId          = tipoConsola.TipoEquipoId,
+                EstadoId              = estadoRevision.EstadoId,
+                PrioridadId           = prioridadNormal.PrioridadId,
+                MarcaModelo           = "PlayStation 5 Slim",
+                NumeroSerieImei       = "PS5-2026-88441",
+                IngresoEnciende       = true,
+                IngresoPantallaRota   = false,
+                IngresoMojado         = false,
+                IngresoDejaCargador   = false,
+                FalloReportado        = "Puerto HDMI flojo, no da señal en el televisor.",
+                FechaIngreso          = DateTime.UtcNow.AddDays(-2),
+                FechaEntregaEstimada  = DateTime.UtcNow.AddDays(3),
+                CheckRevisionPlaca    = true,
+                CheckCambioPieza      = false,
+                CheckPruebasEncendido = false,
+                ObservacionTecnico    = "Se requiere reemplazo de puerto HDMI en placa.",
+                CostoManoObra         = 1800.00m,
+                PresupuestoAprobadoCliente = true,
+            },
         };
         db.OrdenesReparacions.AddRange(ordenes);
         await db.SaveChangesAsync();
@@ -274,13 +303,15 @@ public static class DataSeeder
         // ── HISTORIAL DE EVENTOS (SIGNALR / TRAZABILIDAD) ─────────────────
         var eventos = new List<HistorialOrdenEvento>
         {
-            new() { OrdenId = ordenes[0].OrdenId, Origen = "Sistema",        Autor = "Sistema",        Mensaje = "Orden creada con estado Recibido.",           FechaHora = DateTime.UtcNow.AddDays(-3) },
-            new() { OrdenId = ordenes[0].OrdenId, Origen = "TecnicoAndroid", Autor = "Carlos Mendoza", Mensaje = "Inicio de diagnóstico. Batería degradada.", FechaHora = DateTime.UtcNow.AddDays(-2) },
-            new() { OrdenId = ordenes[0].OrdenId, Origen = "TecnicoAndroid", Autor = "Carlos Mendoza", Mensaje = "Cambio a estado En Revisión de Placa.",    FechaHora = DateTime.UtcNow.AddDays(-1) },
-            new() { OrdenId = ordenes[1].OrdenId, Origen = "CajaWinForms",   Autor = "Laura Gómez",    Mensaje = "Orden ingresada en ventanilla.",              FechaHora = DateTime.UtcNow.AddDays(-1) },
-            new() { OrdenId = ordenes[2].OrdenId, Origen = "Sistema",        Autor = "Sistema",        Mensaje = "Orden creada con estado Recibido.",           FechaHora = DateTime.UtcNow.AddDays(-7) },
-            new() { OrdenId = ordenes[2].OrdenId, Origen = "TecnicoAndroid", Autor = "Laura Ramirez",  Mensaje = "Pantalla reemplazada. Pruebas OK.",         FechaHora = DateTime.UtcNow.AddDays(-2) },
-            new() { OrdenId = ordenes[2].OrdenId, Origen = "Sistema",        Autor = "Sistema",        Mensaje = "Estado actualizado a Reparado.",             FechaHora = DateTime.UtcNow.AddDays(-1) },
+            new() { OrdenId = ordenes[0].OrdenId, Origen = "Sistema",        Autor = "Sistema",        Mensaje = "Orden creada con estado Recibido.",            FechaHora = DateTime.UtcNow.AddDays(-3) },
+            new() { OrdenId = ordenes[0].OrdenId, Origen = "TecnicoAndroid", Autor = "Carlos Mendoza", Mensaje = "Inicio de diagnóstico. Batería degradada.",  FechaHora = DateTime.UtcNow.AddDays(-2) },
+            new() { OrdenId = ordenes[0].OrdenId, Origen = "TecnicoAndroid", Autor = "Carlos Mendoza", Mensaje = "Cambio a estado En Revisión de Placa.",     FechaHora = DateTime.UtcNow.AddDays(-1) },
+            new() { OrdenId = ordenes[1].OrdenId, Origen = "CajaWinForms",   Autor = "Laura Gómez",    Mensaje = "Orden ingresada en ventanilla.",               FechaHora = DateTime.UtcNow.AddDays(-1) },
+            new() { OrdenId = ordenes[2].OrdenId, Origen = "Sistema",        Autor = "Sistema",        Mensaje = "Orden creada con estado Recibido.",            FechaHora = DateTime.UtcNow.AddDays(-7) },
+            new() { OrdenId = ordenes[2].OrdenId, Origen = "TecnicoAndroid", Autor = "Carlos Mendoza", Mensaje = "Pantalla reemplazada. Pruebas OK.",          FechaHora = DateTime.UtcNow.AddDays(-2) },
+            new() { OrdenId = ordenes[2].OrdenId, Origen = "Sistema",        Autor = "Sistema",        Mensaje = "Estado actualizado a Reparado.",              FechaHora = DateTime.UtcNow.AddDays(-1) },
+            new() { OrdenId = ordenes[3].OrdenId, Origen = "Sistema",        Autor = "Sistema",        Mensaje = "Orden creada con estado Recibido.",            FechaHora = DateTime.UtcNow.AddDays(-2) },
+            new() { OrdenId = ordenes[3].OrdenId, Origen = "TecnicoAndroid", Autor = "Jorge Pereira",  Mensaje = "Diagnóstico completado: puerto HDMI dañado.", FechaHora = DateTime.UtcNow.AddDays(-1) },
         };
         db.HistorialOrdenEventos.AddRange(eventos);
         await db.SaveChangesAsync();
