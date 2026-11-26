@@ -83,7 +83,7 @@ jobs:
 
       # 10) Publica los resultados de pruebas en GitHub como un Check/Status
       - name: Publish test results
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@3eeb9fc888e82e8be2fb356bbeec2750231672bc # v1
         if: success() || failure()
         with:
           name: .NET test results
