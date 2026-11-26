@@ -7,4 +7,5 @@
   <Project Path="TechService.BlazorClient/TechService.BlazorClient.csproj" />
   <Project Path="TechService.Hub/TechService.Hub.csproj" />
   <Project Path="TechService.Infrastructure/TechService.Infrastructure.csproj" Id="d9136029-c8c7-4986-8dca-75a93c75817a" />
+  <Project Path="TechService.WinForms/TechService.WinForms.csproj" />
 </Solution>

@@ -18,7 +18,7 @@ on:
 jobs:
   build:
     name: Build and test
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: read
       checks: write
@@ -56,6 +56,7 @@ jobs:
       # 6) Inicia la analítica de SonarCloud si el token existe
       - name: Begin SonarCloud analysis
         if: ${{ env.SONAR_TOKEN != '' }}
+        shell: bash
         run: |
           export PATH="$PATH:$HOME/.dotnet/tools"
           dotnet sonarscanner begin \
@@ -75,6 +76,7 @@ jobs:
       # 9) Cierra la analítica de SonarCloud si el token existe
       - name: End SonarCloud analysis
         if: ${{ env.SONAR_TOKEN != '' }}
+        shell: bash
         run: |
           export PATH="$PATH:$HOME/.dotnet/tools"
           dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"

@@ -39,8 +39,8 @@ public class TecnicosService(
         {
             Nombre = tecnico.Nombre,
             Especialidad = string.IsNullOrWhiteSpace(tecnico.Especialidad) ? "General" : tecnico.Especialidad,
-            PorcentajeComision = 10.0m,
-            Activo = true
+            PorcentajeComision = tecnico.PorcentajeComision ?? 10.0m,
+            Activo = tecnico.Activo ?? true
         };
         contexto.Tecnicos.Add(entidad);
         var guardo = await contexto.SaveChangesAsync() > 0;
@@ -57,6 +57,10 @@ public class TecnicosService(
 
         entidad.Nombre = tecnico.Nombre;
         entidad.Especialidad = tecnico.Especialidad;
+        if (tecnico.PorcentajeComision.HasValue)
+            entidad.PorcentajeComision = tecnico.PorcentajeComision.Value;
+        if (tecnico.Activo.HasValue)
+            entidad.Activo = tecnico.Activo.Value;
         contexto.Tecnicos.Update(entidad);
 
         return await contexto.SaveChangesAsync() > 0;
@@ -76,7 +80,9 @@ public class TecnicosService(
         {
             TecnicoId = tecnicoId,
             Nombre = tecnico.Nombre,
-            Especialidad = tecnico.Especialidad
+            Especialidad = tecnico.Especialidad,
+            PorcentajeComision = tecnico.PorcentajeComision,
+            Activo = tecnico.Activo
         };
 
     }
@@ -90,7 +96,9 @@ public class TecnicosService(
             {
                 TecnicoId = t.TecnicoId,
                 Nombre = t.Nombre,
-                Especialidad= t.Especialidad
+                Especialidad = t.Especialidad,
+                PorcentajeComision = t.PorcentajeComision,
+                Activo = t.Activo
             })
             .Where(criterio)
             .ToListAsync();

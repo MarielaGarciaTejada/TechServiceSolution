@@ -39,10 +39,12 @@ public class ClientesService(
         {
             ClienteId = cliente.ClienteId,
             Nombre = cliente.Nombre,
-            DocumentoIdentidad = $"DOC-{Guid.NewGuid():N}"[..18], // Valores por defecto para que SQL no de un error
-            Telefono = "N/A",
-            Email = "cliente@correo.com",
-            FechaRegistro = DateTime.UtcNow
+            DocumentoIdentidad = string.IsNullOrWhiteSpace(cliente.DocumentoIdentidad)
+                ? $"DOC-{Guid.NewGuid():N}"[..18] // Valores por defecto para que SQL no de un error
+                : cliente.DocumentoIdentidad.Trim(),
+            Telefono = string.IsNullOrWhiteSpace(cliente.Telefono) ? "N/A" : cliente.Telefono.Trim(),
+            Email = string.IsNullOrWhiteSpace(cliente.Email) ? "cliente@correo.com" : cliente.Email.Trim(),
+            FechaRegistro = cliente.FechaRegistro ?? DateTime.UtcNow
         };
         contexto.Clientes.Add(entidad);
         var guardo = await contexto.SaveChangesAsync() > 0;
@@ -56,6 +58,12 @@ public class ClientesService(
         var entidad = await contexto.Clientes.FirstOrDefaultAsync(c => c.ClienteId == cliente.ClienteId);
         if (entidad == null) return false;
         entidad.Nombre = cliente.Nombre;
+        if (!string.IsNullOrWhiteSpace(cliente.DocumentoIdentidad))
+            entidad.DocumentoIdentidad = cliente.DocumentoIdentidad.Trim();
+        if (!string.IsNullOrWhiteSpace(cliente.Telefono))
+            entidad.Telefono = cliente.Telefono.Trim();
+        if (!string.IsNullOrWhiteSpace(cliente.Email))
+            entidad.Email = cliente.Email.Trim();
         contexto.Clientes.Update(entidad);
         return await contexto.SaveChangesAsync() > 0;
 
@@ -76,7 +84,11 @@ public class ClientesService(
         return new ClienteDto
         {
             ClienteId = clienteId,
-            Nombre = cliente.Nombre
+            Nombre = cliente.Nombre,
+            DocumentoIdentidad = cliente.DocumentoIdentidad,
+            Telefono = cliente.Telefono,
+            Email = cliente.Email,
+            FechaRegistro = cliente.FechaRegistro
         };
 
         //return await contexto.Clientes
@@ -92,7 +104,11 @@ public class ClientesService(
             .Select(c => new ClienteDto
             {
                 ClienteId = c.ClienteId,
-                Nombre = c.Nombre
+                Nombre = c.Nombre,
+                DocumentoIdentidad = c.DocumentoIdentidad,
+                Telefono = c.Telefono,
+                Email = c.Email,
+                FechaRegistro = c.FechaRegistro
             })
             .Where(criterio)
             .ToListAsync();
