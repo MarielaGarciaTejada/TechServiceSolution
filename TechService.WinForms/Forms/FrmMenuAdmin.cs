@@ -229,9 +229,7 @@ namespace TechService.WinForms.Forms
 
         private void btnEntregasGarantia_Click(object sender, EventArgs e)
         {
-            // TODO (Luis Enmanuel): descomentar cuando cree FrmEntregasGarantia
-            // OpenChildForm(new FrmEntregasGarantia());
-            MessageBox.Show("Módulo de Entregas y Garantías en construcción.", "En desarrollo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            OpenChildForm(new FrmEntregasGarantia());
             SetButtonColors(btnEntregasGarantia, ColorActivo);
             SetButtonColors(btnDashboard, ColorInactivo);
             SetButtonColors(btnRecepcion, ColorInactivo);
@@ -245,9 +243,7 @@ namespace TechService.WinForms.Forms
 
         private void btnOrdenRepuestos_Click(object sender, EventArgs e)
         {
-            // TODO (Luis Enmanuel): descomentar cuando cree FrmOrdenRepuestos
-            // OpenChildForm(new FrmOrdenRepuestos());
-            MessageBox.Show("Módulo de Repuestos por Orden en construcción.", "En desarrollo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            OpenChildForm(new FrmOrdenRepuestos());
             SetButtonColors(btnOrdenRepuestos, ColorActivo);
             SetButtonColors(btnDashboard, ColorInactivo);
             SetButtonColors(btnRecepcion, ColorInactivo);
