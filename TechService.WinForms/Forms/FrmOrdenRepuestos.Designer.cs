@@ -63,7 +63,7 @@
             // 
             btnCerrar.FlatStyle = FlatStyle.Flat;
             btnCerrar.ForeColor = Color.White;
-            btnCerrar.Location = new Point(765, 8);
+            btnCerrar.Location = new Point(763, 8);
             btnCerrar.Name = "btnCerrar";
             btnCerrar.Size = new Size(35, 35);
             btnCerrar.TabIndex = 10;

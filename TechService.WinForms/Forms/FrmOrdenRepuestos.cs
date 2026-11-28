@@ -129,8 +129,10 @@ namespace TechService.WinForms.Forms
                         r.OrdenRepuestoId,
                         Pieza = nombrePieza,
                         r.Cantidad,
-                        r.PrecioUnitario,
-                        Subtotal = r.Cantidad * r.PrecioUnitario,
+                        //r.PrecioUnitario,
+                        //Subtotal = r.Cantidad * r.PrecioUnitario,
+                        PrecioUnitario = $"RD$ {r.PrecioUnitario:N2}",
+                        Subtotal = $"RD$ {(r.Cantidad * r.PrecioUnitario):N2}",
                         Estado = ObtenerNombreEstado(r.EstadoAprobacionId)
                     };
                 }).ToList();
